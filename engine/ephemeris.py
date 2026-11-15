@@ -71,5 +71,10 @@ class LunarSky:
         return pd.concat(out, ignore_index=True)
 
 
-def hourly_grid(start: str, end: str, step_h: float = 1.0) -> pd.DatetimeIndex:
-    return pd.date_range(start=start, end=end, freq=pd.Timedelta(hours=step_h), tz="UTC", inclusive="left")
+def _utc(t) -> pd.Timestamp:
+    t = pd.Timestamp(t)
+    return t.tz_localize("UTC") if t.tz is None else t.tz_convert("UTC")
+
+
+def hourly_grid(start, end, step_h: float = 1.0) -> pd.DatetimeIndex:
+    return pd.date_range(start=_utc(start), end=_utc(end), freq=pd.Timedelta(hours=step_h), inclusive="left")

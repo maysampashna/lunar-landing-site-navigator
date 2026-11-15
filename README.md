@@ -15,7 +15,7 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 
 | Page | What you get |
 |---|---|
-| 🚀 **Mission Overview** | Pick sites, a surface start date and stay length. Get a decision report: real LOLA south-pole map with rated sites, comparison table, recommendation, visibility timeline, timing-sensitivity and storage charts |
+| 🚀 **Mission Control** | Pick sites, landing time and stay. A NASA-style mission clock (UTC day-of-year, MET) lets you scrub to any second; a **Station availability** board shows each site's power and communication status, a **Deep Space Network** panel shows which complex (Goldstone, Madrid, Canberra) can see the Moon, an upcoming-events list gives AOS/LOS, sunrise/sunset and DSN handovers, and the ranking section recommends the best landing site with schedule-risk and battery analysis |
 | 🔭 **Sky View** | Stand at a site: animated panorama of the Sun and Earth moving over the real terrain skyline, a true-size telescope close-up, an all-sky horizon chart, and a **Live now** mode for the current sky |
 | 📅 **Date Finder** | Best surface-start dates per site (2026–2031) and a calendar heatmap |
 | ✅ **Validation & Sources** | JPL Horizons comparison, built-in physics checks, terrain status, data citations, AI-use statement |
@@ -39,7 +39,7 @@ python scripts/precompute_horizons.py          # terrain horizons to 150 km + si
 python scripts/precompute_ephem.py             # hourly Sun/Earth az/el 2026-01-01 -> 2031-03-01
 python scripts/fetch_external.py --horizons    # JPL Horizons samples for every site
 python scripts/validate_horizons.py --offline  # -> data/validation.json
-pytest -q                                      # 32 unit tests
+pytest -q                                      # 34 unit tests
 ```
 
 **Confidence rule:** a recommendation is shown only for sites with real LOLA terrain and at most 5 % uncertain
@@ -57,6 +57,7 @@ time; otherwise the app labels results as a demonstration ranking.
 | Eclipses | Sun disc hidden behind Earth (circle overlap from the site) reduces sunlight and power; total lunar eclipses 2026-03-03 and 2028-12-31 are detected in tests |
 | Terrain uncertainty | Where a ray ran out of DEM data and unknown far terrain (≤12 km relief) could reach above the Sun/Earth, the time step is 'uncertain'; sites uncertain >5 % of the time are excluded from the confident ranking |
 | Resolution | Hourly precompute for date scanning; the Decision Report recomputes its windows at 10-min resolution with the kernels (else labelled approximate) |
+| Communication (DSN) | Direct-to-Earth contact = Earth above the site's terrain horizon (+ mask) **and** the Moon ≥ 10° (adjustable) above the horizon at Goldstone, Madrid or Canberra (geometric; no antenna scheduling or link budget) |
 | Timing sensitivity | Assumes surface arrival shifts exactly +24/+48 h; decision = highest worst-case score |
 
 ## Validation (reported separately)

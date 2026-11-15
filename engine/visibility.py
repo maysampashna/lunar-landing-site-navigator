@@ -29,6 +29,7 @@ from .power import PowerParams, solar_power_w
 class VisParams:
     sunlit_threshold: float = 0.5      # fraction of solar disc that must be visible
     earth_mask_deg: float = 0.0        # extra elevation margin above terrain for DTE
+    require_dsn: bool = False          # DTE also needs a DSN complex seeing the Moon (dsn_any must be supplied)
     power: PowerParams = field(default_factory=PowerParams)
 
 
@@ -38,7 +39,8 @@ def _uncertain(el, radius, hz, incomplete, coverage_km):
     return incomplete & (el + radius > hz) & (el - radius < bound)
 
 
-def compute(ephem: pd.DataFrame, horizon: HorizonProfile | None, params: VisParams) -> pd.DataFrame:
+def compute(ephem: pd.DataFrame, horizon: HorizonProfile | None, params: VisParams,
+            dsn_any: np.ndarray | None = None) -> pd.DataFrame:
     """ephem columns: time_utc, sun_az_deg, sun_el_deg, sun_dist_au, earth_az_deg, earth_el_deg, earth_dist_km.
     horizon=None -> flat (0 deg) horizon (for comparison / fallback)."""
     s_az = ephem["sun_az_deg"].to_numpy(float)
@@ -70,7 +72,9 @@ def compute(ephem: pd.DataFrame, horizon: HorizonProfile | None, params: VisPara
     sun_frac = sun_frac_terrain * (1.0 - eclipse_frac)
     earth_frac = disc_fraction_above(e_el, hz_earth, r_earth)
     sunlit = sun_frac >= params.sunlit_threshold
-    dte = (e_el - hz_earth) >= params.earth_mask_deg
+    earth_in_view = (e_el - hz_earth) >= params.earth_mask_deg
+    dsn = np.ones(n, bool) if dsn_any is None else np.asarray(dsn_any, bool)
+    dte = earth_in_view & dsn if params.require_dsn else earth_in_view
 
     return pd.DataFrame({
         "time_utc": ephem["time_utc"].to_numpy(),
@@ -79,7 +83,7 @@ def compute(ephem: pd.DataFrame, horizon: HorizonProfile | None, params: VisPara
         "sun_radius_deg": r_sun, "earth_radius_deg": r_earth,
         "sun_frac_terrain": sun_frac_terrain, "eclipse_frac": eclipse_frac,
         "sun_frac": sun_frac, "earth_frac": earth_frac,
-        "sunlit": sunlit, "dte_visible": dte, "both": sunlit & dte,
+        "sunlit": sunlit, "earth_in_view": earth_in_view, "dsn_any": dsn, "dte_visible": dte, "both": sunlit & dte,
         "sun_uncertain": unc_sun, "earth_uncertain": unc_earth, "uncertain": unc_sun | unc_earth,
         "p_solar_w": solar_power_w(sun_frac, ephem["sun_dist_au"].to_numpy(float), params.power),
     })

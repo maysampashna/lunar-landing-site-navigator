@@ -263,3 +263,13 @@ def test_zero_weights_detected():
     assert ScoreWeights().is_valid()
     with pytest.raises(ValueError):
         ScoreWeights(0, 0, 0).normalized()
+
+
+# ---------------------------------------------------------------- DSN-qualified communication
+def test_require_dsn_gates_dte():
+    eph = _ephem_row([90.0] * 4, [20.0] * 4, earth_az=0.0, earth_el=5.0, n=4)
+    v = visibility.compute(eph, None, visibility.VisParams(require_dsn=True), dsn_any=np.array([1, 0, 1, 0], bool))
+    assert list(v.earth_in_view) == [True] * 4
+    assert list(v.dte_visible) == [True, False, True, False]
+    v = visibility.compute(eph, None, visibility.VisParams(require_dsn=False), dsn_any=np.array([0, 0, 0, 0], bool))
+    assert v.dte_visible.all()

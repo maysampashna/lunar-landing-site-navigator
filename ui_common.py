@@ -35,12 +35,13 @@ h1, h2, h3 {{letter-spacing: -0.01em;}}
 .lln-sub {{color:#9AA4B8; font-size:0.92rem; margin-bottom:14px;}}
 .lln-card {{background:{PANEL}; border:1px solid {BORDER}; border-radius:14px; padding:16px 18px; height:100%;}}
 .lln-card h4 {{margin:0 0 10px 0; font-size:1.02rem; color:#E6EAF2;}}
-.lln-kpi {{background:{PANEL}; border:1px solid {BORDER}; border-radius:14px; padding:14px 16px;}}
+.lln-kpi {{flex:1; background:{PANEL}; border:1px solid {BORDER}; border-radius:14px; padding:14px 16px;}}
 .lln-kpi .lbl {{color:#9AA4B8; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.06em;}}
 .lln-kpi .val {{font-size:1.55rem; font-weight:700; margin-top:2px;}}
 .lln-kpi .sub {{color:#9AA4B8; font-size:0.8rem;}}
 .lln-chip {{display:inline-block; padding:2px 10px; border-radius:999px; font-size:0.78rem; font-weight:700;}}
-.lln-table {{width:100%; border-collapse:collapse; font-size:0.9rem;}}
+.lln-table {{width:100%; border-collapse:collapse; font-size:0.84rem;}}
+.lln-table td, .lln-table th {{white-space:nowrap;}}
 .lln-table th {{text-align:left; color:#9AA4B8; font-weight:600; padding:6px 8px; border-bottom:1px solid {BORDER};}}
 .lln-table td {{padding:7px 8px; border-bottom:1px solid #1B2440;}}
 .lln-table td:first-child {{white-space:nowrap;}}
@@ -53,6 +54,21 @@ h1, h2, h3 {{letter-spacing: -0.01em;}}
 .lln-badge {{display:inline-flex; align-items:center; gap:6px; background:#0F2A22; border:1px solid #2F7A5B;
              color:#3DDC97; border-radius:999px; padding:3px 12px; font-size:0.8rem; font-weight:600;}}
 .lln-foot {{color:#7D879C; font-size:0.78rem; margin-top:18px;}}
+.lln-clock {{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; font-size:2.25rem; font-weight:700;
+             color:#E6EAF2; letter-spacing:0.02em; line-height:1.1;}}
+.lln-clock-sub {{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; color:#9AA4B8; font-size:0.86rem;}}
+.lln-sec {{font-size:1.15rem; font-weight:700; margin:18px 0 8px 0; color:#E6EAF2;}}
+.lln-sec span {{color:#9AA4B8; font-weight:500; font-size:0.85rem; margin-left:8px;}}
+.lln-st {{background:{PANEL}; border:1px solid {BORDER}; border-radius:14px; padding:12px 14px; margin-bottom:10px;}}
+.lln-st .hd {{display:flex; flex-wrap:wrap; gap:6px; justify-content:space-between; align-items:center; margin-bottom:8px;}}
+.lln-st .nm {{font-weight:700; font-size:1.0rem;}}
+.lln-st .ln {{font-size:0.84rem; color:#C9D1E3; margin:3px 0;}}
+.lln-st .ln b {{color:#E6EAF2;}}
+.lln-st .mut {{color:#7D879C; font-size:0.78rem;}}
+.lln-big {{font-size:1.9rem; font-weight:800;}}
+.lln-ev {{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; font-size:0.82rem; color:#C9D1E3;
+          display:flex; gap:10px; padding:4px 0; border-bottom:1px solid #1B2440;}}
+.lln-ev .tm {{color:#9AA4B8; min-width:118px;}}
 </style>
 """
 
@@ -144,15 +160,17 @@ def validation_report() -> dict | None:
     return json.loads(p.read_text()) if p.exists() else None
 
 
-def weights_sidebar() -> ScoreWeights:
-    with st.expander("⚖️ Score weights (your preferences)"):
-        w = ScoreWeights(st.slider("Sunlight", 0.0, 1.0, DEFAULT_WEIGHTS.w_sun),
-                         st.slider("Earth visibility", 0.0, 1.0, DEFAULT_WEIGHTS.w_dte),
-                         st.slider("Both at once", 0.0, 1.0, DEFAULT_WEIGHTS.w_both),
+def weights_sidebar(expander: bool = True) -> ScoreWeights:
+    import contextlib
+    ctx = st.expander("⚖️ Score weights (your preferences)") if expander else contextlib.nullcontext()
+    with ctx:
+        w = ScoreWeights(st.slider("Weight: power (sunlight)", 0.0, 1.0, DEFAULT_WEIGHTS.w_sun),
+                         st.slider("Weight: communication", 0.0, 1.0, DEFAULT_WEIGHTS.w_dte),
+                         st.slider("Weight: both at once", 0.0, 1.0, DEFAULT_WEIGHTS.w_both),
                          st.slider("Penalty: longest dark gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dark),
-                         st.slider("Penalty: longest no-Earth gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dte))
+                         st.slider("Penalty: longest no-comm gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dte))
         if not w.is_valid():
-            st.warning("Sunlight, Earth visibility and Both cannot all be zero — using the default weights.")
+            st.warning("Power, communication and both cannot all be zero — using the default weights.")
             w = DEFAULT_WEIGHTS
         st.caption("Positive weights are rescaled to sum to 1. The score is a preference calculation, "
                    "not a safety rating.")
@@ -173,7 +191,32 @@ def _basemap():
     return Image.open(ROOT / "data" / "basemap_hill.png"), meta
 
 
-def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, highlight: str | None = None):
+STATUS = {  # (label, colour)
+    "available": ("STATION AVAILABLE", "#3DDC97"),
+    "power": ("POWER ONLY · NO COMM", "#FFB02E"),
+    "comm": ("COMM ONLY · ON BATTERY", "#4C8DFF"),
+    "none": ("UNAVAILABLE", "#FF6B8B"),
+}
+
+
+def status_of(sunlit: bool, comm: bool) -> str:
+    return "available" if sunlit and comm else "power" if sunlit else "comm" if comm else "none"
+
+
+def doy(t: pd.Timestamp) -> str:
+    """NASA-style UTC day-of-year time tag, e.g. 2027-228T18:30:00Z"""
+    return f"{t:%Y-%j}T{t:%H:%M:%S}Z"
+
+
+def met(t: pd.Timestamp, t0: pd.Timestamp) -> str:
+    s = int((t - t0).total_seconds())
+    sign = "+" if s >= 0 else "-"
+    s = abs(s)
+    return f"T{sign}{s // 86400}d {s % 86400 // 3600:02d}:{s % 3600 // 60:02d}:{s % 60:02d}"
+
+
+def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, highlight: str | None = None,
+                   status: dict | None = None):
     img, m = _basemap()
     s = sites_df().set_index("site_id")
     fig = go.Figure()
@@ -203,7 +246,11 @@ def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, high
         r = s.loc[sid]
         sc = None if scores is None else scores.get(sid)
         lab, col = rating(sc) if sc is not None else ("", site_color(sid))
-        labels.append(f"{r['name']}" + (f" · {sc:.0f}" if sc is not None else ""))
+        if status is not None and sid in status:
+            lab, col = STATUS[status[sid]]
+            labels.append(f"{r['name']}")
+        else:
+            labels.append(f"{r['name']}" + (f" · {sc:.0f}" if sc is not None else ""))
         colors.append(col)
         sizes.append(22 if sid == highlight else 15)
         hover.append(f"<b>{r['name']}</b><br>{abs(r.lat_deg):.2f}°S, {r.lon_deg:.2f}°E<br>"
@@ -232,9 +279,15 @@ def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, high
     return fig
 
 
+FONT = "Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+
+
 def style_fig(fig, height=360, title=None):
-    fig.update_layout(height=height, paper_bgcolor=PANEL, plot_bgcolor=PANEL, font=dict(color="#C9D1E3"),
-                      margin=dict(l=10, r=10, t=40 if title else 10, b=10), title=title,
+    fig.update_layout(height=height, paper_bgcolor=PANEL, plot_bgcolor=PANEL,
+                      font=dict(color="#C9D1E3", family=FONT, size=13),
+                      title=dict(text=title, font=dict(size=16, color="#E6EAF2", family=FONT)) if title else None,
+                      hoverlabel=dict(bgcolor="#0F1628", bordercolor=BORDER, font=dict(family=FONT, size=12)),
+                      margin=dict(l=10, r=10, t=40 if title else 10, b=10),
                       legend=dict(orientation="h", yanchor="top", y=-0.12, x=0))
     if title:
         fig.update_layout(margin=dict(l=10, r=10, t=44, b=60))

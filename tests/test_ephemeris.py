@@ -55,3 +55,11 @@ def test_no_eclipse_on_ordinary_day(sky):
     from engine import visibility
     df = sky.compute(0.0, 0.0, 0.0, hourly_grid("2027-05-01", "2027-05-02"))
     assert visibility.compute(df, None, visibility.VisParams()).eclipse_frac.max() == 0.0
+
+
+def test_dsn_moon_coverage_is_nearly_continuous(sky):
+    from engine.dsn import coverage, moon_elevations
+    d = coverage(moon_elevations(sky, hourly_grid("2027-03-01", "2027-04-01")), 10.0)
+    for c in ("dsn_goldstone_el", "dsn_madrid_el", "dsn_canberra_el"):
+        assert d[c].between(-90, 90).all() and d[c].max() > 30      # Moon rises high at every complex
+    assert d.dsn_any.mean() > 0.85                                  # three complexes ~120 deg apart
