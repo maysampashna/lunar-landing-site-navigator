@@ -1,0 +1,135 @@
+{
+  "what": "Ephemeris validation vs JPL Horizons (positions only)",
+  "sites": {
+    "de_gerlache_rim_2": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.4695085111204875e-05,
+        "median_abs_del_deg": 9.152028857872807e-06,
+        "max_abs_daz_sky_deg": 8.24348066235769e-06,
+        "median_abs_daz_sky_deg": 3.039031974987826e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.4634932160195735e-05,
+        "median_abs_del_deg": 8.256838459730353e-06,
+        "max_abs_daz_sky_deg": 7.185644769376496e-06,
+        "median_abs_daz_sky_deg": 2.567463512837413e-06
+      }
+    },
+    "haworth": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.4702336956773365e-05,
+        "median_abs_del_deg": 7.797588707392222e-06,
+        "max_abs_daz_sky_deg": 9.619378227613375e-06,
+        "median_abs_daz_sky_deg": 2.9777422706979803e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.4524268888482794e-05,
+        "median_abs_del_deg": 7.073847116068066e-06,
+        "max_abs_daz_sky_deg": 8.174933373009317e-06,
+        "median_abs_daz_sky_deg": 3.097533586520089e-06
+      }
+    },
+    "malapert_massif": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.4329344302232982e-05,
+        "median_abs_del_deg": 8.584864637395384e-06,
+        "max_abs_daz_sky_deg": 9.534970234994277e-06,
+        "median_abs_daz_sky_deg": 3.7248016229332296e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.3947504189815163e-05,
+        "median_abs_del_deg": 7.608739744535686e-06,
+        "max_abs_daz_sky_deg": 8.00840165988256e-06,
+        "median_abs_daz_sky_deg": 3.182244932181164e-06
+      }
+    },
+    "mons_mouton": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.346069380270265e-05,
+        "median_abs_del_deg": 8.904770886941638e-06,
+        "max_abs_daz_sky_deg": 9.844460145944945e-06,
+        "median_abs_daz_sky_deg": 2.8842421460401448e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.4340495197107117e-05,
+        "median_abs_del_deg": 7.068922468267402e-06,
+        "max_abs_daz_sky_deg": 8.373748881100188e-06,
+        "median_abs_daz_sky_deg": 3.1434799293628198e-06
+      }
+    },
+    "nobile_rim_1": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.3232082842762338e-05,
+        "median_abs_del_deg": 8.475333167057286e-06,
+        "max_abs_daz_sky_deg": 9.379678624373035e-06,
+        "median_abs_daz_sky_deg": 3.3094985449199045e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.3854533702506444e-05,
+        "median_abs_del_deg": 7.769450928618582e-06,
+        "max_abs_daz_sky_deg": 8.14542189242626e-06,
+        "median_abs_daz_sky_deg": 2.831735087782545e-06
+      }
+    },
+    "nobile_rim_2": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.2020105929266833e-05,
+        "median_abs_del_deg": 8.393143599831447e-06,
+        "max_abs_daz_sky_deg": 9.553051685736244e-06,
+        "median_abs_daz_sky_deg": 2.7558068612197315e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.4988873688018267e-05,
+        "median_abs_del_deg": 7.985627824114161e-06,
+        "max_abs_daz_sky_deg": 8.359972696936245e-06,
+        "median_abs_daz_sky_deg": 2.973042126371861e-06
+      }
+    },
+    "peak_near_cabeus_b": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.4577454554576263e-05,
+        "median_abs_del_deg": 9.628438236042314e-06,
+        "max_abs_daz_sky_deg": 8.500060605194401e-06,
+        "median_abs_daz_sky_deg": 2.911619047809856e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.261782090811181e-05,
+        "median_abs_del_deg": 8.11604800654564e-06,
+        "max_abs_daz_sky_deg": 7.341241556547279e-06,
+        "median_abs_daz_sky_deg": 3.04008730079816e-06
+      }
+    },
+    "slater_plain": {
+      "earth": {
+        "n": 50,
+        "max_abs_del_deg": 1.3704114832879116e-05,
+        "median_abs_del_deg": 9.266379090711041e-06,
+        "max_abs_daz_sky_deg": 1.0166006680833808e-05,
+        "median_abs_daz_sky_deg": 3.1635758288501535e-06
+      },
+      "sun": {
+        "n": 50,
+        "max_abs_del_deg": 1.281229780891735e-05,
+        "median_abs_del_deg": 6.64171439068717e-06,
+        "max_abs_daz_sky_deg": 8.016723737630989e-06,
+        "median_abs_daz_sky_deg": 3.1348952010513227e-06
+      }
+    }
+  },
+  "overall_max_error_deg": 1.4988873688018267e-05,
+  "generated_utc": "2026-11-15T18:58:06.037805+00:00"
+}
