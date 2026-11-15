@@ -105,7 +105,7 @@ with left:
     with st.container(border=True):
         st.markdown("**🗺️ South-pole candidate sites** · real LOLA terrain shading · colour = rating")
         st.plotly_chart(ui.south_pole_map(chosen, scores, height=520, highlight=top), width="stretch",
-                        config={"displayModeBar": False, "scrollZoom": True})
+                        config={"displayModeBar": False, "scrollZoom": False})
 
 with right:
     rows = []

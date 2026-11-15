@@ -224,10 +224,11 @@ def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, high
     bx, by = cx - span / 2 + 18, cy - span / 2 + 14
     fig.add_shape(type="line", x0=bx, x1=bx + 50, y0=by, y1=by, line=dict(color="white", width=3))
     fig.add_annotation(x=bx + 25, y=by, text="50 km", showarrow=False, yshift=10, font=dict(color="white", size=11))
-    fig.update_xaxes(range=[cx - span / 2, cx + span / 2], visible=False)
-    fig.update_yaxes(range=[cy - span / 2, cy + span / 2], visible=False, scaleanchor="x", scaleratio=1)
+    fig.update_xaxes(range=[cx - span / 2, cx + span / 2], visible=False, fixedrange=True, constrain="domain")
+    fig.update_yaxes(range=[cy - span / 2, cy + span / 2], visible=False, scaleanchor="x", scaleratio=1,
+                     fixedrange=True, constrain="domain")
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor=BG, plot_bgcolor="black",
-                      dragmode="pan")
+                      dragmode=False)
     return fig
 
 
