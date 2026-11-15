@@ -15,11 +15,11 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 
 | Page | What you get |
 |---|---|
-| 🏠 **Home** | South-pole map and two entry points: **Explorer Mode** (visual, plain language) and **Mission Control Mode** (decision analysis) |
-| 🚀 **Mission Overview** | Pick sites, landing time and stay. A NASA-style mission clock (UTC day-of-year, MET) lets you scrub to any second; a **Station availability** board shows each site's power and communication status, a **Deep Space Network** panel shows which complex (Goldstone, Madrid, Canberra) can see the Moon, an upcoming-events list gives AOS/LOS, sunrise/sunset and DSN handovers, and the ranking section recommends the best landing site with schedule-risk and battery analysis |
-| 🔭 **Sky View** | Stand at a site: animated panorama of the Sun and Earth moving over the real terrain skyline, a true-size telescope close-up, an all-sky horizon chart, and a **Live now** mode for the current sky |
-| 📅 **Date Finder** | Best surface-start dates per site (2026–2031) and a calendar heatmap |
-| ✅ **Validation & Sources** | JPL Horizons comparison, built-in physics checks, terrain status, data citations, AI-use statement |
+| 🏠 **Home** | South-pole map and two entry points: **Explorer Mode** (three guided questions: where, when, why the date matters) and **Mission Control Mode** (full analysis) |
+| 🚀 **Mission Overview** | Pick sites, surface start and stay. Top row: setup, terrain map (click a site to focus it) and a simulated mission clock (UTC day-of-year, MET) with upcoming AOS/LOS, sunrise/sunset and DSN events. Then a **Mission Decision Summary** (best modeled site, ties shown as ties, worst case over +24/+48 h start shifts), site status at the selected time, and tabs for site comparison, **Deep Space Network** geometry (Goldstone, Madrid, Canberra), visibility timeline, schedule risk and storage |
+| 🔭 **Sky View** | Stand at a site: animated panorama of the Sun and Earth over the real terrain skyline (drawn hollow when behind terrain), a true-size telescope close-up with terrain in front, an all-sky horizon chart, and a **Now (UTC)** mode |
+| 📅 **Date Finder** | Best surface-start dates per site (2026–2031) with tie-aware ranks, one-click **Open in Mission Overview**, and a calendar heatmap |
+| ✅ **Validation & Sources** | Validation summary (scope of each check), then JPL Horizons comparison, physics checks and tests, terrain status, data sources, limitations and AI-use statement |
 
 Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
 
@@ -59,7 +59,7 @@ time; otherwise the app labels results as a demonstration ranking.
 | Score | `100·clip(w_sun·f_sun + w_dte·f_dte + w_both·f_both − w_gd·g_dark − w_ge·g_dte, 0, 1)`; positive weights renormalised to sum 1; gaps normalised by window length |
 | Eclipses | Sun disc hidden behind Earth (circle overlap from the site) reduces sunlight and power; total lunar eclipses 2026-03-03 and 2028-12-31 are detected in tests |
 | Terrain uncertainty | Where a ray ran out of DEM data and unknown far terrain (≤12 km relief) could reach above the Sun/Earth, the time step is 'uncertain'; sites uncertain >5 % of the time are excluded from the confident ranking |
-| Resolution | Hourly precompute for date scanning; the Decision Report recomputes its windows at 10-min resolution with the kernels (else labelled approximate) |
+| Resolution | Hourly precompute for date scanning; Mission Overview recomputes its windows at 10-min resolution with the kernels (else labelled approximate) |
 | Communication (DSN) | Direct-to-Earth contact = Earth above the site's terrain horizon (+ mask) **and** the Moon ≥ 10° (adjustable) above the horizon at Goldstone, Madrid or Canberra (geometric; no antenna scheduling or link budget) |
 | Timing sensitivity | Assumes surface arrival shifts exactly +24/+48 h; decision = highest worst-case score |
 

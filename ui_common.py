@@ -14,7 +14,7 @@ from engine import data, visibility
 from engine.metrics import ScoreWeights
 
 ROOT = Path(__file__).resolve().parent
-SUN, EARTH, BOTH, GREY = "#FFB02E", "#4C8DFF", "#3DDC97", "#8A93A6"
+SUN, EARTH, BOTH, GREY = "#FFB02E", "#38BDF8", "#3DDC97", "#8A93A6"   # amber = Sun/power, cyan = Earth/comms
 BG, PANEL, BORDER = "#06131F", "#0B1E2D", "#1C3A4A"
 TEAL, AMBER = "#2DD4BF", "#F5A524"
 SITE_COLORS = ["#B57BFF", "#4C8DFF", "#3DDC97", "#FFB02E", "#FF6B8B", "#4FD1C5", "#F6E05E", "#A0AEC0"]
@@ -34,57 +34,64 @@ CSS = f"""
 <style>
 html, body, [class*="css"], .stMarkdown, .stText, button, input, label {{font-family: Inter, 'Segoe UI', Roboto, sans-serif;}}
 .stApp {{background: radial-gradient(1200px 500px at 85% -10%, rgba(45,212,191,0.07), transparent 60%), {BG};}}
-.block-container {{padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1560px;}}
+.block-container {{padding-top: 4.4rem !important; padding-bottom: 1.5rem !important; max-width: 1480px; margin: 0 auto;}}
+[data-testid="stWidgetLabel"] p {{font-size: 0.92rem; color:#C9D8E0;}}
+[data-testid="stExpander"] summary p {{font-size: 0.95rem; font-weight:600;}}
+[data-testid="stCaptionContainer"] {{font-size: 0.86rem; color:#9FB4C0;}}
 section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0%, #06131F 100%); border-right: 1px solid {BORDER};}}
 .material-symbols-outlined {{font-family:'Material Symbols Rounded','Material Symbols Outlined'; font-weight:400; font-style:normal; line-height:1;
    display:inline-block; vertical-align:middle; -webkit-font-feature-settings:'liga'; font-feature-settings:'liga';}}
 /* page title banner (real LOLA terrain) */
-.lln-banner {{position:relative; border-radius:16px; padding:22px 26px 18px 26px; margin-bottom:16px; overflow:hidden;
-   background: linear-gradient(90deg, rgba(6,19,31,0.96) 0%, rgba(6,19,31,0.80) 45%, rgba(6,19,31,0.25) 100%), url("BANNER_URI");
+.lln-banner {{position:relative; border-radius:14px; padding:14px 22px 12px 22px; margin-bottom:12px; overflow:hidden;
+   background: linear-gradient(90deg, rgba(6,19,31,0.97) 0%, rgba(6,19,31,0.88) 50%, rgba(6,19,31,0.55) 100%), url("BANNER_URI");
    background-size: cover; background-position: center; border:1px solid {BORDER};}}
 .lln-banner .row {{display:flex; align-items:center; gap:16px;}}
-.lln-banner .ico {{width:52px; height:52px; border:1.5px solid {TEAL}; border-radius:12px; display:flex; align-items:center;
+.lln-banner .ico {{width:44px; height:44px; border:1.5px solid {TEAL}; border-radius:12px; display:flex; align-items:center;
    justify-content:center; color:{TEAL}; background:rgba(45,212,191,0.06);}}
-.lln-banner .ico .material-symbols-outlined {{font-size:30px;}}
-.lln-banner h1 {{margin:0; font-size:2.35rem; font-weight:800; color:#F2F8FA; letter-spacing:-0.02em;}}
-.lln-banner .sub {{color:#C2D3DC; font-size:1.0rem; margin-top:4px;}}
-.lln-banner .bar {{width:74px; height:3px; background:{TEAL}; border-radius:3px; margin-top:12px; box-shadow:0 0 12px {TEAL};}}
+.lln-banner .ico .material-symbols-outlined {{font-size:26px;}}
+.lln-banner h1 {{margin:0; padding:0; font-size:1.9rem; font-weight:800; color:#F2F8FA; letter-spacing:-0.02em;}}
+.lln-banner .sub {{color:#C2D3DC; font-size:0.98rem; margin-top:2px;}}
+.lln-banner .bar {{display:none;}}
 .lln-pill {{display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 12px; font-size:0.82rem; font-weight:600;}}
 .lln-pill.ok {{background:rgba(61,220,151,0.10); color:#3DDC97; border:1px solid rgba(61,220,151,0.55);}}
 .lln-pill.amber {{background:rgba(245,165,36,0.12); color:{AMBER}; border:1px solid rgba(245,165,36,0.65);}}
 /* cards = keyed Streamlit containers */
 [class*="st-key-card_"], [class*="st-key-amber_"] {{background: linear-gradient(160deg, rgba(14,40,56,0.92) 0%, rgba(9,27,40,0.92) 100%);
-   border:1px solid rgba(45,212,191,0.38); border-radius:16px; padding:16px 18px !important;
-   box-shadow: 0 0 0 1px rgba(45,212,191,0.05), 0 8px 30px rgba(0,0,0,0.35), inset 0 0 22px rgba(45,212,191,0.04);}}
-[class*="st-key-amber_"] {{border-color: rgba(245,165,36,0.75); box-shadow: 0 0 18px rgba(245,165,36,0.12);}}
-.lln-ct {{display:flex; align-items:center; gap:10px; font-size:1.18rem; font-weight:700; color:#F2F8FA; margin-bottom:6px;}}
-.lln-ct .material-symbols-outlined {{color:{TEAL}; font-size:24px;}}
+   border:1px solid rgba(45,212,191,0.28); border-radius:14px; padding:14px 16px !important;
+   box-shadow: 0 6px 20px rgba(0,0,0,0.30);}}
+[class*="st-key-amber_"] {{border-color: rgba(245,165,36,0.65);}}
+.lln-ct {{display:flex; align-items:center; gap:10px; font-size:1.08rem; font-weight:700; color:#F2F8FA; margin-bottom:6px;}}
+.lln-ct .material-symbols-outlined {{color:{TEAL}; font-size:22px;}}
 .lln-ct small {{color:#9FB4C0; font-weight:500; font-size:0.85rem;}}
 /* KPI cards */
-.lln-k {{display:flex; gap:14px; align-items:flex-start; border-radius:16px; padding:16px 18px; height:100%;
-   background: linear-gradient(160deg, rgba(14,40,56,0.95), rgba(9,27,40,0.95)); border:1px solid rgba(45,212,191,0.45);}}
-.lln-k.amber {{border-color: rgba(245,165,36,0.8);}}
-.lln-k .ib {{min-width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+.lln-k {{display:flex; gap:12px; align-items:flex-start; border-radius:14px; padding:12px 14px; height:100%;
+   background: linear-gradient(160deg, rgba(14,40,56,0.95), rgba(9,27,40,0.95)); border:1px solid rgba(45,212,191,0.30);}}
+.lln-k.amber {{border-color: rgba(245,165,36,0.65);}}
+.lln-k .ib {{min-width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;
    border:1.5px solid currentColor;}}
-.lln-k .ib .material-symbols-outlined {{font-size:26px;}}
+.lln-k .ib .material-symbols-outlined {{font-size:23px;}}
 .lln-k .lb {{font-weight:700; color:#E6F1F5; font-size:0.98rem;}}
-.lln-k .vl {{font-weight:800; font-size:1.55rem; line-height:1.25;}}
-.lln-k .sb {{color:#B5C7D1; font-size:0.84rem;}}
-.lln-k.sm {{padding:10px 12px; gap:10px;}}
+.lln-k .vl {{font-weight:800; font-size:1.4rem; line-height:1.25;}}
+.lln-k .sb {{color:#B5C7D1; font-size:0.86rem;}}
+.lln-k.sm {{padding:10px 12px; gap:10px; flex:1 1 0; min-width:0;}}
+.lln-k.sm .vl, .lln-k.sm .sb {{overflow:hidden; text-overflow:ellipsis;}}
 .lln-k.sm .ib {{min-width:36px; height:36px; border-radius:10px;}}
 .lln-k.sm .ib .material-symbols-outlined {{font-size:21px;}}
 .lln-k.sm .lb {{font-size:0.84rem;}}
 .lln-k.sm .vl {{font-size:1.2rem; white-space:nowrap;}}
-.lln-k.sm .sb {{font-size:0.76rem;}}
+.lln-k.sm .sb {{font-size:0.8rem;}}
 .lln-kpi {{flex:1; background:{PANEL}; border:1px solid {BORDER}; border-radius:14px; padding:14px 16px;}}
 .lln-kpi .lbl {{color:#9FB4C0; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.06em;}}
 .lln-kpi .val {{font-size:1.55rem; font-weight:700; margin-top:2px;}}
 .lln-kpi .sub {{color:#9FB4C0; font-size:0.8rem;}}
 .lln-chip {{display:inline-block; padding:3px 11px; border-radius:999px; font-size:0.76rem; font-weight:700; letter-spacing:0.02em;}}
 /* tables */
-.lln-table {{width:100%; border-collapse:separate; border-spacing:0 4px; font-size:0.88rem;}}
-.lln-table th {{text-align:left; color:#C9D8E0; font-weight:600; padding:6px 8px; border-bottom:1px solid {BORDER};}}
-.lln-table td {{padding:6px 8px; background:rgba(255,255,255,0.015);}}
+.lln-table {{width:100%; border-collapse:separate; border-spacing:0 3px; font-size:0.93rem; font-variant-numeric: tabular-nums;}}
+.lln-table th {{text-align:left; color:#9FB4C0; font-weight:600; font-size:0.8rem; padding:6px 8px; border-bottom:1px solid {BORDER};}}
+.lln-table th[title] {{cursor:help; text-decoration: underline dotted #4A6474;}}
+.lln-table td.n, .lln-table th.n {{text-align:right;}}
+.lln-table tr.tie td {{background:rgba(45,212,191,0.05);}}
+.lln-table td {{padding:6px 8px; background:rgba(255,255,255,0.015); color:#E6F1F5;}}
 .lln-table td, .lln-table th {{white-space:nowrap;}}
 .lln-table tr.top td {{background:rgba(45,212,191,0.10); border-top:1px solid {TEAL}; border-bottom:1px solid {TEAL};}}
 .lln-table tr.top td:first-child {{border-left:1px solid {TEAL}; border-radius:8px 0 0 8px;}}
@@ -94,27 +101,28 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 .lln-bar {{display:inline-block; height:8px; border-radius:6px; background:linear-gradient(90deg,#2F80ED,#4C8DFF); vertical-align:middle;}}
 .lln-dot {{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px;}}
 /* station cards */
-.lln-st {{background: linear-gradient(160deg, rgba(14,40,56,0.95), rgba(9,27,40,0.95)); border:1px solid rgba(45,212,191,0.45);
-   border-radius:16px; padding:14px 16px; margin-bottom:10px;}}
-.lln-st .hd {{display:flex; gap:12px; align-items:center; margin-bottom:10px;}}
-.lln-st .hd .ib {{width:48px; height:48px; border-radius:12px; border:1.5px solid rgba(45,212,191,0.6); color:{TEAL};
+.lln-st {{background: linear-gradient(160deg, rgba(14,40,56,0.95), rgba(9,27,40,0.95)); border:1px solid rgba(45,212,191,0.30);
+   border-radius:14px; padding:12px 14px; margin-bottom:8px;}}
+.lln-st .hd {{display:flex; gap:10px; align-items:center; margin-bottom:6px;}}
+.lln-st .hd .ib {{width:38px; height:38px; border-radius:12px; border:1.5px solid rgba(45,212,191,0.6); color:{TEAL};
    display:flex; align-items:center; justify-content:center;}}
-.lln-st .nm {{font-weight:800; font-size:1.08rem; color:#F2F8FA; margin-bottom:4px;}}
-.lln-st .rw {{display:flex; justify-content:space-between; align-items:center; font-size:0.9rem; padding:4px 0; color:#C9D8E0;}}
+.lln-st .nm {{font-weight:800; font-size:1.02rem; color:#F2F8FA; margin-bottom:4px;}}
+.lln-st .rw {{display:flex; justify-content:space-between; align-items:center; font-size:0.9rem; padding:3px 0; color:#C9D8E0;}}
 .lln-st .rw b {{color:#F2F8FA; font-size:0.98rem;}}
 .lln-st .rw .material-symbols-outlined {{font-size:19px; margin-right:8px;}}
-.lln-st .mut {{color:#7F95A2; font-size:0.76rem; margin-top:6px;}}
+.lln-st .mut {{color:#8FA4B0; font-size:0.8rem; margin-top:4px;}}
+.lln-st.focus {{border-color:rgba(245,165,36,0.8);}}
 /* summary bar */
-.lln-sum {{display:flex; border:1px solid rgba(245,165,36,0.75); border-radius:16px; padding:14px 8px;
-   background: linear-gradient(160deg, rgba(14,40,56,0.95), rgba(9,27,40,0.95)); box-shadow: 0 0 18px rgba(245,165,36,0.10);}}
+.lln-sum {{display:flex; border:1px solid {BORDER}; border-radius:14px; padding:12px 8px;
+   background: linear-gradient(160deg, rgba(14,40,56,0.95), rgba(9,27,40,0.95));}}
 .lln-sum > div {{flex:1; display:flex; gap:14px; align-items:center; padding:2px 18px; border-right:1px solid {BORDER};}}
 .lln-sum > div:last-child {{border-right:none;}}
-.lln-sum .material-symbols-outlined {{font-size:38px; color:{AMBER};}}
+.lln-sum .material-symbols-outlined {{font-size:30px; color:{TEAL};}}
 .lln-sum .lb {{color:#E6F1F5; font-weight:600; font-size:0.95rem;}}
-.lln-sum .vl {{font-weight:800; font-size:1.5rem; color:#F2F8FA;}}
+.lln-sum .vl {{font-weight:800; font-size:1.3rem; color:#F2F8FA;}}
 .lln-sum .sb {{color:#B5C7D1; font-size:0.84rem;}}
 /* clock + events */
-.lln-clock {{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; font-size:clamp(1.3rem, 2.1vw, 2.15rem); font-weight:700; white-space:nowrap;
+.lln-clock {{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; font-size:clamp(1.05rem, 1.42vw, 1.7rem); font-weight:700; white-space:nowrap;
    color:#F2F8FA; letter-spacing:0.02em; line-height:1.1;}}
 .lln-clock-sub {{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; color:#9FB4C0; font-size:0.82rem;}}
 .lln-ev {{font-family:'JetBrains Mono','Cascadia Mono',Consolas,monospace; font-size:0.84rem; color:#DCE7EC;
@@ -122,7 +130,7 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 .lln-ev .d {{width:9px; height:9px; border-radius:50%;}}
 .lln-ev .tm {{color:#E6F1F5; min-width:88px;}}
 .lln-ev .tg {{margin-left:auto; color:#7F95A2;}}
-.lln-sec {{display:flex; align-items:center; gap:10px; font-size:1.2rem; font-weight:700; margin:20px 0 10px 0; color:#F2F8FA;}}
+.lln-sec {{display:flex; align-items:baseline; gap:10px; font-size:1.12rem; font-weight:700; margin:16px 0 8px 0; color:#F2F8FA;}}
 .lln-sec .material-symbols-outlined {{color:{TEAL};}}
 .lln-sec span.s {{color:#9FB4C0; font-weight:500; font-size:0.85rem;}}
 .lln-rec {{background:linear-gradient(135deg, #0F2A22 0%, #10241E 100%); border:1px solid #2F7A5B; border-radius:16px; padding:16px 20px;}}
@@ -131,8 +139,8 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 .lln-demo {{background:#2A0F18; border:1px solid #8A1F3A; border-radius:16px; padding:14px 18px;}}
 .lln-badge {{display:inline-flex; align-items:center; gap:6px; background:rgba(61,220,151,0.10); border:1px solid rgba(61,220,151,0.55);
    color:#3DDC97; border-radius:999px; padding:4px 12px; font-size:0.82rem; font-weight:600;}}
-.lln-foot {{color:#6F8592; font-size:0.76rem; margin-top:22px;}}
-.lln-mode h3 {{margin:0; font-size:1.55rem; font-weight:800; color:#F2F8FA;}}
+.lln-foot {{color:#8FA4B0; font-size:0.84rem; margin-top:18px; border-top:1px solid {BORDER}; padding-top:10px;}}
+.lln-mode h3 {{margin:0; font-size:1.4rem; font-weight:800; color:#F2F8FA;}}
 .lln-mode p {{color:#C9D8E0; font-size:1.0rem;}}
 .lln-mode .it {{display:flex; align-items:center; gap:12px; color:#E6F1F5; padding:5px 0; font-size:0.98rem;}}
 .lln-mode .it .material-symbols-outlined {{color:{TEAL}; font-size:24px;}}
@@ -140,6 +148,23 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 div[data-testid="stPageLink"] a {{border:1px solid rgba(45,212,191,0.6); border-radius:12px; justify-content:center; padding:8px 12px;}}
 [class*="st-key-amber_"] div[data-testid="stPageLink"] a {{border-color: rgba(245,165,36,0.85);}}
 .stTabs [data-baseweb="tab"] {{border:1px solid {BORDER}; border-radius:10px; padding:6px 16px; margin-right:6px; background:{PANEL};}}
+.stTabs [data-baseweb="tab"] p {{font-size:0.95rem; font-weight:600;}}
+/* Mission Decision Summary */
+.lln-dec {{display:grid; grid-template-columns: 1.15fr 0.55fr 1.5fr 1.6fr; gap:14px; align-items:stretch;
+   border:1px solid rgba(245,165,36,0.65); border-radius:14px; padding:14px 16px; margin:12px 0 4px 0;
+   background: linear-gradient(160deg, rgba(20,38,48,0.96), rgba(9,27,40,0.96));}}
+.lln-dec .site {{border:1px solid rgba(245,165,36,0.6); border-radius:12px; padding:10px 14px; background:rgba(245,165,36,0.06);}}
+.lln-dec .site .lb, .lln-dec .score .lb {{color:#C9D8E0; font-size:0.82rem; font-weight:600;}}
+.lln-dec .site .nm {{color:{AMBER}; font-weight:800; font-size:1.3rem; line-height:1.25;}}
+.lln-dec .score {{border:1px solid {BORDER}; border-radius:12px; padding:10px 12px; text-align:center;}}
+.lln-dec .score .vl {{font-weight:800; font-size:1.7rem; color:#F2F8FA;}}
+.lln-dec .mt {{display:grid; grid-template-columns:auto 1fr; column-gap:12px; row-gap:3px; font-size:0.9rem; align-content:center;}}
+.lln-dec .mt span {{color:#B5C7D1;}} .lln-dec .mt b {{color:#F2F8FA; font-variant-numeric: tabular-nums;}}
+.lln-dec .why {{font-size:0.9rem; color:#DCE7EC; align-self:center;}}
+.lln-dec .why .nt {{color:#8FA4B0; font-size:0.8rem; margin-top:6px;}}
+.lln-tag {{display:inline-block; font-size:0.72rem; font-weight:700; letter-spacing:0.05em; color:#9FB4C0; border:1px solid {BORDER};
+   border-radius:6px; padding:1px 7px; margin-left:8px; vertical-align:middle; text-transform:uppercase;}}
+@media (max-width: 1100px) {{ .lln-dec {{grid-template-columns: 1fr 1fr;}} .lln-sum {{flex-wrap:wrap;}} }}
 .stTabs [aria-selected="true"] {{border-color:{TEAL} !important; background:rgba(45,212,191,0.12) !important;}}
 </style>
 """
@@ -149,10 +174,30 @@ def _data_uri(path: Path, mime: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode()
 
 
+DEFAULT_SITE_IDS = ["malapert_massif", "de_gerlache_rim_2", "mons_mouton", "nobile_rim_2"]
+
+
+def shared_defaults() -> dict:
+    """One set of mission selections shared by every page (Overview, Sky View, Date Finder)."""
+    ids = list(names())
+    four = [s for s in DEFAULT_SITE_IDS if s in ids] or ids[:4]
+    return {"m_sites": four, "m_date": pd.Timestamp("2027-08-16").date(), "m_hour": 12, "m_dur": 6.0,
+            "m_site": "de_gerlache_rim_2" if "de_gerlache_rim_2" in ids else ids[0]}
+
+
 def setup_page(title: str = "", icon: str = ""):
-    """Inject theme CSS (page config is set once in app.py)."""
+    """Inject theme CSS (page config is set once in app.py) and keep shared selections alive across pages.
+
+    Streamlit drops a widget's value when its page is not shown; re-assigning the key on every page keeps
+    the site, date, hour and stay the user picked when they move between pages."""
     st.markdown(CSS.replace("BANNER_URI", _data_uri(ROOT / "assets" / "banner.jpg", "image/jpeg")),
                 unsafe_allow_html=True)
+    for k, v in shared_defaults().items():
+        st.session_state[k] = st.session_state.get(k, v)
+
+
+def mission_start() -> pd.Timestamp:
+    return pd.Timestamp(st.session_state["m_date"]).tz_localize("UTC") + pd.Timedelta(hours=int(st.session_state["m_hour"]))
 
 
 def mi(name: str, size: int | None = None, color: str | None = None) -> str:
@@ -297,11 +342,11 @@ def _basemap():
     return Image.open(ROOT / "data" / "basemap_hill.png"), meta
 
 
-STATUS = {  # (label, colour)
-    "available": ("STATION AVAILABLE", "#3DDC97"),
-    "power": ("POWER ONLY · NO COMM", "#FFB02E"),
-    "comm": ("COMM ONLY · ON BATTERY", "#4C8DFF"),
-    "none": ("UNAVAILABLE", "#FF6B8B"),
+STATUS = {  # (label, colour) — modeled geometry at the selected time
+    "available": ("SUN + EARTH", "#3DDC97"),
+    "power": ("SUN ONLY", "#FFB02E"),
+    "comm": ("EARTH ONLY", "#38BDF8"),
+    "none": ("NEITHER", "#FF6B8B"),
 }
 
 
@@ -368,13 +413,15 @@ def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, high
         sizes.append(22 if sid == highlight else 15)
         hover.append(f"<b>{r['name']}</b><br>{abs(r.lat_deg):.2f}°S, {r.lon_deg:.2f}°E<br>"
                      f"surface {float(r.height_m)/1000:.2f} km" + (f"<br>score {sc:.0f} ({lab})" if sc is not None else ""))
-    fig.add_trace(go.Scatter(x=x, y=y, mode="markers", hovertext=hover, hoverinfo="text",
+    fig.add_trace(go.Scatter(x=x, y=y, mode="markers", hovertext=hover, hoverinfo="text", customdata=ids,
                              marker=dict(size=sizes, color=colors, line=dict(color="white", width=2),
-                                         symbol="diamond"), showlegend=False))
-    for xi, yi, lab_, col_ in zip(x, y, labels, colors):
+                                         symbol="diamond"), unselected=dict(marker=dict(opacity=1)),
+                             selected=dict(marker=dict(opacity=1)), showlegend=False))
+    for xi, yi, lab_, col_, sid in zip(x, y, labels, colors, ids):
         fig.add_annotation(x=xi, y=yi, text=f"<b>{lab_}</b>", showarrow=False, yshift=20,
-                           font=dict(color="white", size=13), bgcolor="rgba(10,15,30,0.78)",
-                           bordercolor=col_, borderwidth=1.5, borderpad=3)
+                           font=dict(color=AMBER if sid == highlight else "white", size=14 if sid == highlight else 13),
+                           bgcolor="rgba(10,15,30,0.82)", bordercolor=AMBER if sid == highlight else col_,
+                           borderwidth=2 if sid == highlight else 1.2, borderpad=3)
     pad = 45
     xr = [min(x.min(), 0) - pad, max(x.max(), 0) + pad]
     yr = [min(y.min(), 0) - pad, max(y.max(), 0) + pad]
@@ -397,7 +444,7 @@ FONT = "Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 
 def style_fig(fig, height=360, title=None):
     fig.update_layout(height=height, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      font=dict(color="#C9D1E3", family=FONT, size=13),
+                      font=dict(color="#C9D1E3", family=FONT, size=14),
                       title=dict(text=title, font=dict(size=16, color="#E6EAF2", family=FONT)) if title else None,
                       hoverlabel=dict(bgcolor="#0F1628", bordercolor=BORDER, font=dict(family=FONT, size=12)),
                       margin=dict(l=10, r=10, t=40 if title else 10, b=10),
@@ -409,7 +456,10 @@ def style_fig(fig, height=360, title=None):
     return fig
 
 
-def footer():
-    st.markdown(f'<div class="lln-foot">{LIMITATIONS}<br>Data: NASA/JPL NAIF SPICE · NASA GSFC LOLA DEMs · '
-                'USGS Artemis III region grids · validated against JPL Horizons. Team Bulldogs Beyond Earth · '
-                'NASA Space Apps 2026.</div>', unsafe_allow_html=True)
+def footer(link: bool = True):
+    a, b = st.columns([5, 1.1], vertical_alignment="center")
+    a.markdown('<div class="lln-foot">Modeled line-of-sight comparison for planning, not a landing-safety assessment. '
+               'Data: NASA/JPL SPICE · NASA LOLA terrain · USGS Artemis III regions. Team Bulldogs Beyond Earth · '
+               'NASA Space Apps 2026.</div>', unsafe_allow_html=True)
+    if link:
+        b.page_link("views/validation.py", label="Validation & Sources", icon=":material/fact_check:")

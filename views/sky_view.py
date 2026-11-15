@@ -17,34 +17,29 @@ import ui_common as ui
 ui.setup_page()
 names = ui.names()
 sites = ui.sites_df().set_index("site_id")
-mission = st.session_state.get("mission", {})
 ids = list(names)
-default_site = (mission.get("sites") or ["malapert_massif"])[0]
-site = st.session_state.get("sky_site", default_site if default_site in ids else ids[0])
-r = sites.loc[site]
+if st.session_state.get("m_site") not in ids:
+    st.session_state["m_site"] = ids[0]
+st.session_state["sky_days"] = st.session_state.get("sky_days", int(min(14, np.ceil(st.session_state["m_dur"]))))
+
+r = sites.loc[st.session_state["m_site"]]
 ui.banner("satellite_alt", f"Sky View — {r['name']}",
-          f"{abs(r.lat_deg):.2f}° S, {r.lon_deg:.2f}° E · surface {float(r.height_m) / 1000:.2f} km · observer 2 m AGL · "
-          "Data: LOLA terrain (150 km horizon) + NASA/JPL SPICE ephemeris")
-kpi_slot = st.container()
-col_ctl, col_plot = st.columns([0.9, 3.1])
-with col_ctl:
-    with st.container(key="card_skyctl"):
-        ui.card_title("tune", "Sky View Controls")
-        site = st.selectbox("Site", ids, index=ids.index(site), format_func=names.get, key="sky_site")
-        mode = st.radio("Mode", ["Mission Replay", "Live Now"])
-        if mode == "Mission Replay":
-            d0 = mission.get("start", pd.Timestamp("2027-08-16 12:00", tz="UTC"))
-            day = st.date_input("Start Date (UTC)", d0.date(), min_value=pd.Timestamp("2026-01-02").date(),
-                                max_value=pd.Timestamp("2031-02-10").date())
-            hour = st.slider("UTC Start Hour", 0, 23, int(d0.hour))
-            days = st.slider("Replay Length (days)", 1, 14, int(min(14, mission.get("dur_days", 6))))
-            start = pd.Timestamp(day).tz_localize("UTC") + pd.Timedelta(hours=hour)
-        else:
-            now = pd.Timestamp.now(tz="UTC").floor("h")
-            start, days = now, 2
-            st.caption(f"Next 48 h from **{ui.doy(now)}** (frame 1 = now).")
-        st.markdown(f'<div style="color:#9FB4C0;font-size:0.8rem;margin-top:6px">{ui.mi("info", 16)} Animation step: '
-                    '1 hour. Positions from NASA/JPL SPICE kernels; terrain from LOLA.</div>', unsafe_allow_html=True)
+          f"{abs(r.lat_deg):.2f}° S, {r.lon_deg:.2f}° E · observer 2 m above the surface · LOLA terrain horizon to "
+          "150 km · NASA/JPL SPICE positions")
+with st.container(key="card_skyctl"):
+    c = st.columns([1.5, 1.15, 1.15, 0.75, 1.25], vertical_alignment="bottom")
+    site = c[0].selectbox("Site", ids, format_func=names.get, key="m_site")
+    mode = c[1].segmented_control("Mode", ["Mission replay", "Now (UTC)"], default="Mission replay")
+    if mode != "Now (UTC)":
+        c[2].date_input("Start (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
+                        max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
+        c[3].number_input("Hour", 0, 23, key="m_hour")
+        days = c[4].slider("Replay length (days)", 1, 14, key="sky_days")
+        start = ui.mission_start()
+    else:
+        start, days = pd.Timestamp.now(tz="UTC").floor("h"), 2
+        c[2].markdown(f"<div style='color:#C9D8E0;padding-bottom:8px'>Next 48 h from<br><b>{ui.doy(start)}</b></div>",
+                      unsafe_allow_html=True)
 
 r = sites.loc[site]
 hp = ui.horizon(site)
@@ -67,20 +62,20 @@ def next_change(col):
     return f"{'Ends' if v[0] else 'Starts'} in {hrs:.0f} h"
 
 
-with kpi_slot:
-    k = st.columns(4)
-    k[0].markdown(ui.kcard("wb_sunny", "Sun Visibility", f"{f0.sun_frac * 100:.0f}% Visible",
-                           f"El {f0.sun_el_deg:+.2f}° · Az {f0.sun_az_deg:.1f}° · Terrain {f0.horizon_at_sun_deg:+.2f}°",
-                           ui.SUN, amber=True), unsafe_allow_html=True)
-    k[1].markdown(ui.kcard("public", "Earth Visibility", "In View" if f0.earth_in_view else "Hidden",
-                           f"El {f0.earth_el_deg:+.2f}° · Az {f0.earth_az_deg:.1f}° · Terrain {f0.horizon_at_earth_deg:+.2f}°",
-                           ui.TEAL if f0.earth_in_view else ui.GREY), unsafe_allow_html=True)
-    k[2].markdown(ui.kcard("light_mode", "Sunlight State", "ON" if f0.sunlit else "OFF", next_change("sunlit"),
-                           ui.SUN if f0.sunlit else ui.GREY, amber=True), unsafe_allow_html=True)
-    k[3].markdown(ui.kcard("cell_tower", "Earth Contact State", "ON" if f0.earth_in_view else "OFF",
-                           next_change("earth_in_view") + " (geometric)", ui.TEAL if f0.earth_in_view else ui.GREY),
-                  unsafe_allow_html=True)
-    st.write("")
+k = st.columns(4)
+k[0].markdown(ui.kcard("wb_sunny", "Sun disc above terrain", f"{f0.sun_frac * 100:.0f}%",
+                       f"El {f0.sun_el_deg:+.2f}° · terrain {f0.horizon_at_sun_deg:+.2f}°", ui.SUN),
+              unsafe_allow_html=True)
+k[1].markdown(ui.kcard("public", "Earth", "In view" if f0.earth_in_view else "Behind terrain",
+                       f"El {f0.earth_el_deg:+.2f}° · terrain {f0.horizon_at_earth_deg:+.2f}°",
+                       ui.EARTH if f0.earth_in_view else ui.GREY), unsafe_allow_html=True)
+k[2].markdown(ui.kcard("light_mode", "Sunlight (power)", "ON" if f0.sunlit else "OFF", next_change("sunlit"),
+                       ui.SUN if f0.sunlit else ui.GREY), unsafe_allow_html=True)
+k[3].markdown(ui.kcard("cell_tower", "Potential DTE (geometric)", "ON" if f0.earth_in_view else "OFF",
+                       next_change("earth_in_view"), ui.EARTH if f0.earth_in_view else ui.GREY), unsafe_allow_html=True)
+st.markdown(f'<div style="color:#8FA4B0;font-size:0.82rem;margin:4px 0 8px 2px">Cards show the replay start, '
+            f'{ui.doy(t[0])}. Press ▶ Play on the chart to step through the stay hour by hour.</div>',
+            unsafe_allow_html=True)
 
 az = np.concatenate([hp.az_deg, [360.0]])
 hz = np.concatenate([hp.horizon_el_deg, hp.horizon_el_deg[:1]])
@@ -92,6 +87,24 @@ def label(i):
     row = w.iloc[i]
     return (f"{t[i]:%Y-%m-%d %H:%M} UTC   ·   ☀️ {row.sun_frac * 100:.0f}% of Sun visible   ·   "
             f"🌍 Earth {'in view' if row.dte_visible else 'hidden'}")
+
+
+def halo(row):
+    return dict(size=30 if row.sunlit else 0, color="rgba(255,176,46,0.25)", line=dict(width=0))
+
+
+def sun_marker(row):
+    """Filled when sunlit, faded when only a sliver shows, hollow when fully behind terrain."""
+    if row.sun_frac <= 0:
+        return dict(size=16, symbol="circle-open", color=ui.SUN, line=dict(width=2.5), opacity=0.9)
+    return dict(size=16, symbol="circle", color="#FFD36E", line=dict(color="white", width=1),
+                opacity=1.0 if row.sunlit else 0.5)
+
+
+def earth_marker(row):
+    if not row.earth_in_view:
+        return dict(size=20, symbol="circle-open", color=ui.EARTH, line=dict(width=2.5), opacity=0.9)
+    return dict(size=20, symbol="circle", color=ui.EARTH, line=dict(color="white", width=1.5), opacity=1.0)
 
 
 def play_controls(n, ms=110):
@@ -111,52 +124,52 @@ def play_controls(n, ms=110):
                       bgcolor=ui.BORDER, activebgcolor=ui.EARTH, tickcolor=ui.BORDER)])
 
 
+col_plot, col_geo = st.columns([3.3, 1])
 with col_plot:
     tab1, tab2, tab3 = st.tabs([":material/play_circle: Panorama Replay", ":material/center_focus_strong: Telescope Close-Up", ":material/radar: All-Sky Horizon Chart"])
 
     # ------------------------------------------------------------------ 1. panorama animation
     with tab1:
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=az, y=hz, fill="tozeroy", mode="lines", name="Terrain (LOLA)",
+        fig.add_trace(go.Scatter(x=az, y=hz, fill="tozeroy", mode="lines", name="Terrain (LOLA)", showlegend=False,
                                  line=dict(color="#9AA4B8", width=1.5), fillcolor="#2B3142", hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=[0, 360], y=[ymin, ymin], fill="tonexty", mode="lines", line=dict(width=0),
                                  fillcolor="#2B3142", showlegend=False, hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=w.sun_az_deg, y=w.sun_el_deg, mode="markers", name="Sun path",
-                                 marker=dict(size=3, color=ui.SUN, opacity=0.35), hoverinfo="skip"))
+                                 marker=dict(size=3, color=ui.SUN, opacity=0.35), hoverinfo="skip", showlegend=False))
         fig.add_trace(go.Scatter(x=w.earth_az_deg, y=w.earth_el_deg, mode="markers", name="Earth path",
-                                 marker=dict(size=3, color=ui.EARTH, opacity=0.45), hoverinfo="skip"))
+                                 marker=dict(size=3, color=ui.EARTH, opacity=0.45), hoverinfo="skip", showlegend=False))
         fig.add_trace(go.Scatter(x=[f0.sun_az_deg], y=[f0.sun_el_deg], mode="markers", name="Sun",
-                                 marker=dict(size=30, color="rgba(255,176,46,0.25)", line=dict(width=0)),
-                                 showlegend=False, hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=[f0.sun_az_deg], y=[f0.sun_el_deg], mode="markers", name="☀️ Sun",
-                                 marker=dict(size=16, color="#FFD36E", line=dict(color="white", width=1))))
-        fig.add_trace(go.Scatter(x=[f0.earth_az_deg], y=[f0.earth_el_deg], mode="markers", name="🌍 Earth",
-                                 marker=dict(size=20, color=ui.EARTH, line=dict(color="white", width=1.5))))
+                                 marker=halo(f0), showlegend=False, hoverinfo="skip"))
+        fig.add_trace(go.Scatter(x=[f0.sun_az_deg], y=[f0.sun_el_deg], mode="markers", name="Sun",
+                                 marker=sun_marker(f0)))
+        fig.add_trace(go.Scatter(x=[f0.earth_az_deg], y=[f0.earth_el_deg], mode="markers", name="Earth",
+                                 marker=earth_marker(f0)))
+        fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name="Hollow = behind terrain",
+                                 marker=dict(size=14, symbol="circle-open", color="#C9D8E0", line=dict(width=2))))
         frames = []
         for i in range(len(w)):
             row = w.iloc[i]
             frames.append(go.Frame(name=str(i), traces=[4, 5, 6], data=[
-                go.Scatter(x=[row.sun_az_deg], y=[row.sun_el_deg]),
-                go.Scatter(x=[row.sun_az_deg], y=[row.sun_el_deg]),
-                go.Scatter(x=[row.earth_az_deg], y=[row.earth_el_deg])],
+                go.Scatter(x=[row.sun_az_deg], y=[row.sun_el_deg], marker=halo(row)),
+                go.Scatter(x=[row.sun_az_deg], y=[row.sun_el_deg], marker=sun_marker(row)),
+                go.Scatter(x=[row.earth_az_deg], y=[row.earth_el_deg], marker=earth_marker(row))],
                 layout=dict(title=dict(text=label(i)))))
         fig.frames = frames
         fig.update_xaxes(range=[0, 360], tickvals=[0, 45, 90, 135, 180, 225, 270, 315, 360],
                          ticktext=["N 0°", "NE", "E 90°", "SE", "S 180°", "SW", "W 270°", "NW", "N"], title=None)
         fig.update_yaxes(range=[ymin, ymax], title="Elevation (°)")
-        fig = ui.style_fig(fig, 540)
+        fig = ui.style_fig(fig, 580)
         fig.update_layout(title=dict(text=label(0), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w)),
-                          plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=50, b=95),
+                          plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=78, b=95),
                           legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
+        fig.update_layout(title=dict(y=0.985, yref="container", x=0.01, xanchor="left"))
         st.plotly_chart(fig, width="stretch")
-        st.caption("Press ▶ Play to watch the Sun circle the horizon (one lunar day ≈ 29.5 Earth days) while Earth "
-                   "rocks with libration. Symbols are enlarged for visibility — see the telescope tab for true sizes. "
-                   "Vertical scale is exaggerated: south-polar sun angles are only a few degrees.")
 
     # ------------------------------------------------------------------ 2. telescope close-up (true size)
     with tab2:
-        body = st.radio("Track", ["🌍 Earth", "☀️ Sun"], horizontal=True)
-        key = "earth" if body.startswith("🌍") else "sun"
+        body = st.segmented_control("Track", ["Earth", "Sun"], default="Earth", label_visibility="collapsed") or "Earth"
+        key = "earth" if body == "Earth" else "sun"
         col = ui.EARTH if key == "earth" else "#FFD36E"
         fov = 6.0 if key == "earth" else 4.0
         th = np.linspace(0, 2 * np.pi, 72)
@@ -172,14 +185,14 @@ with col_plot:
             return a, hp.at(a % 360)
 
         fig = go.Figure()
-        ax_, hz_ = terrain_window(w.iloc[0][f"{key}_az_deg"])
-        fig.add_trace(go.Scatter(x=ax_, y=hz_, fill="tozeroy", mode="lines", line=dict(color="#9AA4B8"),
-                                 fillcolor="#2B3142", name="Terrain", hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=ax_, y=np.full_like(ax_, -30), fill="tonexty", mode="lines", line=dict(width=0),
-                                 fillcolor="#2B3142", showlegend=False, hoverinfo="skip"))
         dx, dy = disc(0)
         fig.add_trace(go.Scatter(x=dx, y=dy, fill="toself", mode="lines", fillcolor=col, line=dict(color="white", width=1),
-                                 name=f"{body} (true angular size)"))
+                                 name=f"{body.split(' ')[-1]} (true angular size)"))
+        ax_, hz_ = terrain_window(w.iloc[0][f"{key}_az_deg"])
+        fig.add_trace(go.Scatter(x=ax_, y=np.full_like(ax_, -30), mode="lines", line=dict(width=0),
+                                 showlegend=False, hoverinfo="skip"))
+        fig.add_trace(go.Scatter(x=ax_, y=hz_, fill="tonexty", mode="lines", line=dict(color="#9AA4B8"),
+                                 fillcolor="#2B3142", name="Terrain (drawn in front)", hoverinfo="skip"))
         frames = []
         for i in range(len(w)):
             cz = w.iloc[i][f"{key}_az_deg"]
@@ -187,21 +200,19 @@ with col_plot:
             dx, dy = disc(i)
             ce = w.iloc[i][f"{key}_el_deg"]
             frames.append(go.Frame(name=str(i), traces=[0, 1, 2], data=[
-                go.Scatter(x=ax_, y=hz_), go.Scatter(x=ax_, y=np.full_like(ax_, -30)), go.Scatter(x=dx, y=dy)],
+                go.Scatter(x=dx, y=dy), go.Scatter(x=ax_, y=np.full_like(ax_, -30)), go.Scatter(x=ax_, y=hz_)],
                 layout=dict(title=dict(text=label(i)), xaxis=dict(range=[cz - fov, cz + fov]),
                             yaxis=dict(range=[ce - fov * 0.55, ce + fov * 0.55]))))
         fig.frames = frames
         cz, ce = w.iloc[0][f"{key}_az_deg"], w.iloc[0][f"{key}_el_deg"]
         fig.update_xaxes(range=[cz - fov, cz + fov], title="Azimuth (°)")
         fig.update_yaxes(range=[ce - fov * 0.55, ce + fov * 0.55], title="Elevation (°)", scaleanchor="x", scaleratio=1)
-        fig = ui.style_fig(fig, 560)
+        fig = ui.style_fig(fig, 580)
         fig.update_layout(title=dict(text=label(0), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w), 140),
-                          plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=50, b=95),
+                          plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=78, b=95),
                           legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
+        fig.update_layout(title=dict(y=0.985, yref="container", x=0.01, xanchor="left"))
         st.plotly_chart(fig, width="stretch")
-        st.caption(f"A {2 * fov:.0f}°-wide telescope view that follows the {key.title()} with equal scale on both axes. "
-                   "The disc is drawn at its true apparent size (Earth ≈ 1.9°, Sun ≈ 0.53°) so you can see exactly how "
-                   "much of it clears the real mountain skyline.")
 
     # ------------------------------------------------------------------ 3. all-sky horizon chart
     with tab3:
@@ -231,23 +242,34 @@ with col_plot:
                                                      color="#7D879C", angle=90, tickfont=dict(size=9))))
         fig = ui.style_fig(fig, 600)
         st.plotly_chart(fig, width="stretch")
-        st.caption("All-sky view looking straight up: compass directions around the edge, elevation increasing toward "
-                   "the centre. The grey band is the real terrain; tracks are coloured from light (start) to dark (end).")
 
 
-sun_clear = f0.sun_el_deg - f0.horizon_at_sun_deg
-st.markdown(
-    '<div class="lln-sum" style="border-color:rgba(45,212,191,0.5);margin-top:12px">'
-    f'<div>{ui.mi("my_location", None, ui.TEAL)}<div><div class="lb" style="font-size:1.1rem;font-weight:800">Key Geometry</div>'
-    f'<div class="sb">Sun at {ui.doy(t[0])}</div></div></div>'
-    f'<div>{ui.mi("north_east", None, ui.TEAL)}<div><div class="lb">Azimuth</div><div class="vl" style="color:{ui.TEAL}">'
-    f'{f0.sun_az_deg:.1f}°</div></div></div>'
-    f'<div>{ui.mi("landscape", None, ui.TEAL)}<div><div class="lb">Elevation</div><div class="vl" style="color:{ui.TEAL}">'
-    f'{f0.sun_el_deg:+.2f}°</div></div></div>'
-    f'<div>{ui.mi("terrain", None, ui.TEAL)}<div><div class="lb">Terrain Clearance</div><div class="vl" '
-    f'style="color:{ui.TEAL}">{sun_clear:+.2f}°</div></div></div>'
-    f'<div>{ui.mi("event", None, ui.AMBER)}<div><div class="lb">Next Horizon Crossing</div><div class="vl" '
-    f'style="color:{ui.AMBER}">{next_change("sunlit").replace("Ends", "Sunset").replace("Starts", "Sunrise").replace("No change", "No crossing")}</div>'
-    '</div></div></div>', unsafe_allow_html=True)
+with col_geo:
+    with st.container(key="card_geo"):
+        ui.card_title("explore", "Geometry", "replay start")
+
+        def row(icon, color, lab, val):
+            return (f'<div class="rw"><span>{ui.mi(icon, 18, color)}{lab}</span><b>{val}</b></div>')
+
+        crossing = next_change("sunlit").replace("Ends", "Sunset").replace("Starts", "Sunrise")
+        st.markdown(
+            '<div class="lln-st" style="border:none;background:none;padding:0">'
+            + row("wb_sunny", ui.SUN, "Sun azimuth", f"{f0.sun_az_deg:.1f}°")
+            + row("wb_sunny", ui.SUN, "Sun elevation", f"{f0.sun_el_deg:+.2f}°")
+            + row("terrain", ui.SUN, "Sun clearance", f"{f0.sun_el_deg - f0.horizon_at_sun_deg:+.2f}°")
+            + row("public", ui.EARTH, "Earth azimuth", f"{f0.earth_az_deg:.1f}°")
+            + row("public", ui.EARTH, "Earth elevation", f"{f0.earth_el_deg:+.2f}°")
+            + row("terrain", ui.EARTH, "Earth clearance", f"{f0.earth_el_deg - f0.horizon_at_earth_deg:+.2f}°")
+            + row("event", ui.GREY, "Next Sun crossing", crossing.replace("No change", "None"))
+            + '<div class="mut">Clearance = elevation above the terrain skyline in that direction. '
+              'Negative = hidden.</div></div>', unsafe_allow_html=True)
+    with st.expander("How to read this view", icon=":material/help:"):
+        st.markdown("- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
+                    "Symbols are enlarged; vertical scale is exaggerated (polar Sun angles are only a few degrees).\n"
+                    "- **Telescope**: follows one body at its true angular size (Earth ≈ 1.9°, Sun ≈ 0.53°), with "
+                    "terrain drawn in front, so you see exactly how much clears the skyline.\n"
+                    "- **All-sky**: looking straight up; elevation increases toward the centre, tracks fade light → dark "
+                    "over time.\n- Potential DTE here is geometric (Earth above terrain); DSN geometry is in "
+                    "Mission Overview.")
 
 ui.footer()
