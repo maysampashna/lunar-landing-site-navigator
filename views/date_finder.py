@@ -1,6 +1,11 @@
 """Date Finder — best surface-start dates per site + calendar heatmap (hourly data)."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -9,12 +14,13 @@ from engine import finder
 from engine.power import PowerParams
 import ui_common as ui
 
-st.set_page_config(page_title="Date Finder · Lunar Navigator", page_icon="📅", layout="wide")
+ui.setup_page("Date Finder · Lunar Navigator", "📅")
 names = ui.names()
 
 with st.sidebar:
     st.header("Search setup")
-    chosen = st.multiselect("Sites", list(names), default=list(names)[:3], format_func=names.get)
+    msites = [x for x in st.session_state.get("mission", {}).get("sites", []) if x in names]
+    chosen = st.multiselect("📍 Sites", list(names), default=msites or list(names)[:3], format_func=names.get)
     dur_days = st.number_input("Surface stay (days)", 1.0, 14.0, 6.0, 0.5)
     first, last = finder.valid_start_range(ui.ephem(list(names)[0]), dur_days * 24, 48)
     rng = st.date_input("Search start dates between (UTC)",
@@ -51,9 +57,14 @@ for s in chosen:
 if results:
     res = pd.concat(results, ignore_index=True)
     res["start (UTC)"] = pd.to_datetime(res.start_utc).dt.strftime("%Y-%m-%d %H:%M")
-    st.dataframe(res[["site", "start (UTC)", "score", "pct_sunlit", "pct_dte", "pct_both", "longest_dark_h",
-                      "longest_no_dte_h", "required_nameplate_kwh", "pct_uncertain", "terrain"]].round(1),
-                 width="stretch", hide_index=True)
+    nice = res[["site", "start (UTC)", "score", "pct_sunlit", "pct_dte", "pct_both", "longest_dark_h",
+                "longest_no_dte_h", "required_nameplate_kwh", "terrain"]].rename(columns={
+        "site": "Site", "score": "Score", "pct_sunlit": "☀️ Sun %", "pct_dte": "🌍 Earth %", "pct_both": "Both %",
+        "longest_dark_h": "Longest dark (h)", "longest_no_dte_h": "Longest no-Earth (h)",
+        "required_nameplate_kwh": "Storage (kWh)", "terrain": "Terrain"})
+    st.dataframe(nice.round(1), width="stretch", hide_index=True,
+                 column_config={"Score": st.column_config.ProgressColumn("Score", min_value=0, max_value=100,
+                                                                         format="%.0f")})
 
 st.markdown("#### Calendar heatmap (daily fraction of hours)")
 metric = st.radio("Metric", ["sunlit", "dte_visible", "both"], horizontal=True,
@@ -72,4 +83,4 @@ if rows:
     hm.update_layout(height=120 + 40 * len(rows), margin=dict(l=10, r=10, t=10, b=10))
     st.plotly_chart(hm, width="stretch")
 
-st.caption(ui.LIMITATIONS)
+ui.footer()

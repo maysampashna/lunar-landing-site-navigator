@@ -11,36 +11,39 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 > representative points, not NASA-designated landing sites. Not assessed: landing hazards, slopes,
 > thermal environment, RF link budget, antenna scheduling.
 
-## Quick start (team)
+## What the app does
+
+| Page | What you get |
+|---|---|
+| 🚀 **Mission Overview** | Pick sites, a surface start date and stay length. Get a decision report: real LOLA south-pole map with rated sites, comparison table, recommendation, visibility timeline, timing-sensitivity and storage charts |
+| 🔭 **Sky View** | Stand at a site: animated panorama of the Sun and Earth moving over the real terrain skyline, a true-size telescope close-up, an all-sky horizon chart, and a **Live now** mode for the current sky |
+| 📅 **Date Finder** | Best surface-start dates per site (2026–2031) and a calendar heatmap |
+| ✅ **Validation & Sources** | JPL Horizons comparison, built-in physics checks, terrain status, data citations, AI-use statement |
+
+## Run it
 
 ```bash
-pip install -r requirements-dev.txt
-python scripts/download_data.py          # NAIF kernels + LOLA 80 m / 240 m DEMs (~420 MB)
-# USGS region grids: download by hand -> data/raw/usgs_regions/  (see download_data.py docstring)
-python scripts/make_sites.py             # sites.csv from USGS polygons (interior points, lunar CRS)
-python scripts/precompute_horizons.py    # terrain horizons (+ site heights)
-python scripts/precompute_ephem.py       # hourly Sun/Earth az/el 2026-01-01 -> 2031-03-01
-python scripts/validate_horizons.py      # ephemeris check vs JPL Horizons -> data/validation.json
-pytest -q                                # unit tests (incl. terrain-azimuth orientation tests)
+pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Pages: **Decision Report** (main) · **Date Finder** (best start dates + calendar heatmap) ·
-**Validation & Sources** (Horizons results, built-in physics checks, terrain status, citations).
+All data the app needs is in the repo (`data/`, `kernels/`).
 
-**Confidence rule:** a recommendation is shown only for sites with REAL LOLA terrain and ≤5 % uncertain
-time. Synthetic or missing terrain → "Demonstration ranking only (not a recommendation)".
+## Reproduce the data from NASA/USGS sources
 
-Before the DEMs arrive, `python scripts/make_fake_data.py` gives REAL ephemeris + SYNTHETIC
-horizons (the app shows a red warning for synthetic terrain).
+```bash
+pip install -r requirements-dev.txt
+python scripts/fetch_external.py               # NAIF kernels, LOLA 80 m / 240 m DEMs + hillshade, USGS region grids
+python scripts/make_sites.py data/raw/usgs_1km # interior representative point per region (lunar CRS)
+python scripts/precompute_horizons.py          # terrain horizons to 150 km + site heights
+python scripts/precompute_ephem.py             # hourly Sun/Earth az/el 2026-01-01 -> 2031-03-01
+python scripts/fetch_external.py --horizons    # JPL Horizons samples for every site
+python scripts/validate_horizons.py --offline  # -> data/validation.json
+pytest -q                                      # 32 unit tests
+```
 
-Deployment (Streamlit Community Cloud) needs `app.py`, `engine/`, `kernels/` (~19 MB, for 10-min
-recomputation), `data/sites.csv`, `data/ephem/`, `data/horizon/`, `data/validation.json` and
-`requirements.txt`. Raw DEMs stay offline.
-
-**Kernel provenance:** the kernels bundled in the starter zip came from mirrors (de421 from the
-`skyfield-data` package; lunar frame kernels from public GitHub copies). Replace them with the NAIF
-originals: `python scripts/download_data.py --force`, then re-run the tests and `validate_horizons.py`.
+**Confidence rule:** a recommendation is shown only for sites with real LOLA terrain and at most 5 % uncertain
+time; otherwise the app labels results as a demonstration ranking.
 
 ## Method
 

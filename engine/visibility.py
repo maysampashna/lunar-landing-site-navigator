@@ -76,6 +76,7 @@ def compute(ephem: pd.DataFrame, horizon: HorizonProfile | None, params: VisPara
         "time_utc": ephem["time_utc"].to_numpy(),
         "sun_az_deg": s_az, "sun_el_deg": s_el, "earth_az_deg": e_az, "earth_el_deg": e_el,
         "horizon_at_sun_deg": hz_sun, "horizon_at_earth_deg": hz_earth,
+        "sun_radius_deg": r_sun, "earth_radius_deg": r_earth,
         "sun_frac_terrain": sun_frac_terrain, "eclipse_frac": eclipse_frac,
         "sun_frac": sun_frac, "earth_frac": earth_frac,
         "sunlit": sunlit, "dte_visible": dte, "both": sunlit & dte,

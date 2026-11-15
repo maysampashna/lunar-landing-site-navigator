@@ -1,6 +1,11 @@
 """Validation & Sources — evidence for every number in the app."""
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -8,7 +13,7 @@ import streamlit as st
 from engine import live
 import ui_common as ui
 
-st.set_page_config(page_title="Validation & Sources · Lunar Navigator", page_icon="✅", layout="wide")
+ui.setup_page("Validation & Sources · Lunar Navigator", "✅")
 st.title("✅ Validation & Sources")
 names = ui.names()
 sites = ui.sites_df()
