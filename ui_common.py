@@ -140,6 +140,16 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 .lln-badge {{display:inline-flex; align-items:center; gap:6px; background:rgba(61,220,151,0.10); border:1px solid rgba(61,220,151,0.55);
    color:#3DDC97; border-radius:999px; padding:4px 12px; font-size:0.82rem; font-weight:600;}}
 .lln-foot {{color:#8FA4B0; font-size:0.84rem; margin-top:18px; border-top:1px solid {BORDER}; padding-top:10px;}}
+.lln-hero {{padding:44px 40px 36px 40px; min-height:200px; display:flex; align-items:center;
+   background: linear-gradient(90deg, rgba(6,19,31,0.95) 0%, rgba(6,19,31,0.70) 55%, rgba(6,19,31,0.20) 100%), url("BANNER_URI");
+   background-size:cover; background-position:center;}}
+.lln-hero h1 {{font-size:2.5rem !important;}}
+.lln-hero .row {{gap:22px;}}
+.lln-mode {{padding:6px 4px 2px 4px;}}
+.lln-mode p {{margin:4px 0 8px 0;}}
+[class*="st-key-card_nav_"] {{padding:6px 10px !important;}}
+[class*="st-key-card_nav_"] div[data-testid="stPageLink"] a {{border:none; justify-content:flex-start;}}
+[class*="st-key-card_nav_"] div[data-testid="stPageLink"] p {{font-size:1rem; font-weight:600;}}
 .lln-mode h3 {{margin:0; font-size:1.4rem; font-weight:800; color:#F2F8FA;}}
 .lln-mode p {{color:#C9D8E0; font-size:1.0rem;}}
 .lln-mode .it {{display:flex; align-items:center; gap:12px; color:#E6F1F5; padding:5px 0; font-size:0.98rem;}}
@@ -502,11 +512,23 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int 
     fig = go.Figure()
     sun_dir = np.array([np.sin(np.radians(row.sun_az_deg)), np.cos(np.radians(row.sun_az_deg)),
                         np.tan(np.radians(max(row.sun_el_deg, 0.5))) * exag])
-    fig.add_trace(go.Surface(x=E, y=N, z=Z, surfacecolor=z, colorscale=MOON_GREYS, showscale=False,
+    # shading from the real Sun direction at the selected time, using true (unexaggerated) slopes
+    zt = (z - h0) / 1000.0 - rr ** 2 / (2 * R_MOON_KM)
+    nE, nN = np.gradient(zt, axis=1), np.gradient(zt, axis=0)
+    dEc, dNc = np.gradient(E, axis=1), np.gradient(N, axis=1)
+    dEr, dNr = np.gradient(E, axis=0), np.gradient(N, axis=0)
+    det = dEc * dNr - dEr * dNc
+    zE = (nE * dNr - nN * dNc) / det                       # dz/dEast  (chain rule on the rotated grid)
+    zN = (nN * dEc - nE * dEr) / det                       # dz/dNorth
+    sa, se = np.radians(row.sun_az_deg), np.radians(row.sun_el_deg)
+    sv = np.array([np.sin(sa) * np.cos(se), np.cos(sa) * np.cos(se), np.sin(se)])
+    lam = (-zE * sv[0] - zN * sv[1] + sv[2]) / np.sqrt(1 + zE ** 2 + zN ** 2)
+    shade = 0.22 + 0.78 * np.clip(lam * 3.0, 0, 1) ** 0.6 if row.sun_el_deg > -1 else np.full_like(zt, 0.12)
+    shade = np.where(np.isnan(Z), np.nan, shade)
+    fig.add_trace(go.Surface(x=E, y=N, z=Z, surfacecolor=shade, cmin=0, cmax=1, showscale=False,
+                             colorscale=[[0, "#0B0C0F"], [0.3, "#3A3B3F"], [0.65, "#8E8C87"], [1, "#DEDBD3"]],
                              hoverinfo="skip", name="LOLA terrain",
-                             lighting=dict(ambient=0.35, diffuse=0.9, specular=0.05, roughness=0.9),
-                             lightposition=dict(x=float(sun_dir[0] * 1e5), y=float(sun_dir[1] * 1e5),
-                                                z=float(sun_dir[2] * 1e5))))
+                             lighting=dict(ambient=1.0, diffuse=0.0, specular=0.0, fresnel=0.0)))
     for lab, a in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
         fig.add_trace(go.Scatter3d(x=[41 * np.sin(np.radians(a))], y=[41 * np.cos(np.radians(a))], z=[0], mode="text",
                                    text=[f"<b>{lab}</b>"], textfont=dict(color="#E6F1F5", size=15), showlegend=False,
@@ -523,7 +545,7 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int 
     fig.add_trace(go.Scatter3d(x=1.2 * np.cos(th), y=1.2 * np.sin(th), z=np.full(60, 0.05), mode="lines",
                                line=dict(color=AMBER, width=5), showlegend=False, hoverinfo="skip"))
     D = 47.0                                               # just beyond the skyline ring
-    for key, nm, col, tpos in (("sun", "Sun", "#FFD36E", "top right"), ("earth", "Earth", EARTH, "top left")):
+    for key, nm, col, tpos in (("sun", "Sun", "#FFD36E", "top center"), ("earth", "Earth", EARTH, "bottom center")):
         a_, e_ = np.radians(row[f"{key}_az_deg"]), row[f"{key}_el_deg"]
         clear = e_ - row[f"horizon_at_{key}_deg"]
         vis = (row.sun_frac > 0) if key == "sun" else bool(row.earth_in_view)
@@ -538,14 +560,15 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int 
             textposition=tpos, textfont=dict(color=c, size=14),
             marker=dict(size=13 if key == "sun" else 11, color=c if vis else "rgba(0,0,0,0)",
                         line=dict(color=c, width=3)), hoverinfo="skip"))
-    back = -sun_dir[:2] / np.linalg.norm(sun_dir[:2])
+    cam_az = np.radians(row.sun_az_deg - 115.0)          # side-on to the Sun: lit slopes and the Sun both in view
+    back = np.array([np.sin(cam_az), np.cos(cam_az)])
     fig.update_layout(
         height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", uirevision=site_id,
         font=dict(family=FONT, color="#C9D1E3"), showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=0.0, x=0.01, bgcolor="rgba(6,19,31,0.6)"),
-        scene=dict(bgcolor="#03050C", aspectmode="data",
+        scene=dict(bgcolor="#000000", aspectmode="data",
                    xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
-                   camera=dict(eye=dict(x=float(back[0]) * 1.3, y=float(back[1]) * 1.3, z=0.75),
+                   camera=dict(eye=dict(x=float(back[0]) * 1.75, y=float(back[1]) * 1.75, z=1.0),
                                center=dict(x=0, y=0, z=-0.1))))
     return fig
 

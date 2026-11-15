@@ -26,21 +26,24 @@ r = sites.loc[st.session_state["m_site"]]
 ui.banner("satellite_alt", f"Sky View — {r['name']}",
           f"{abs(r.lat_deg):.2f}° S, {r.lon_deg:.2f}° E · observer 2 m above the surface · LOLA terrain horizon to "
           "150 km · NASA/JPL SPICE positions")
-toolbar = st.container(key="card_skyctl")
-with toolbar:
-    c = st.columns([1.5, 1.15, 1.15, 0.75, 1.25], vertical_alignment="bottom")
-    site = c[0].selectbox("Site", ids, format_func=names.get, key="m_site")
-    mode = c[1].segmented_control("Mode", ["Mission replay", "Now (UTC)"], default="Mission replay")
-    if mode != "Now (UTC)":
-        c[2].date_input("Start (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
-                        max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
-        c[3].number_input("Hour", 0, 23, key="m_hour")
-        days = c[4].slider("Replay length (days)", 1, 14, key="sky_days")
-        start = ui.mission_start()
-    else:
-        start, days = pd.Timestamp.now(tz="UTC").floor("h"), 2
-        c[2].markdown(f"<div style='color:#C9D8E0;padding-bottom:8px'>Next 48 h from<br><b>{ui.doy(start)}</b></div>",
-                      unsafe_allow_html=True)
+col3d, colctl = st.columns([3.2, 1])
+with colctl:
+    with st.container(key="card_skyctl"):
+        ui.card_title("tune", "Controls")
+        site = st.selectbox("Site", ids, format_func=names.get, key="m_site")
+        mode = st.segmented_control("Mode", ["Mission replay", "Now (UTC)"], default="Mission replay",
+                                    label_visibility="collapsed") or "Mission replay"
+        if mode != "Now (UTC)":
+            a_, b_ = st.columns([1.5, 1])
+            a_.date_input("Start (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
+                          max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
+            b_.number_input("Hour", 0, 23, key="m_hour")
+            days = st.slider("Replay length (days)", 1, 14, key="sky_days")
+            start = ui.mission_start()
+        else:
+            start, days = pd.Timestamp.now(tz="UTC").floor("h"), 2
+            st.caption(f"Next 48 h from {ui.doy(start)}")
+        time_slot = st.container()
 
 r = sites.loc[site]
 hp = ui.horizon(site)
@@ -51,7 +54,7 @@ if hp is None or not live.kernels_available():
 end = start + pd.Timedelta(days=days)
 w = live.fine_visibility(r, hp, start, end, visibility.VisParams(), step_min=60).reset_index(drop=True)
 t = pd.DatetimeIndex(w.time_utc)
-with toolbar:
+with time_slot:
     t_pick = st.select_slider("Selected time (UTC)", options=list(range(len(t))), value=0,
                               format_func=lambda i: f"{t[i]:%b %d %H:%M}")
 idx = int(t_pick)
@@ -62,25 +65,44 @@ def next_change(col):
     v = w[col].to_numpy(bool)
     j = np.flatnonzero(v[idx:] != v[idx])
     if not len(j):
-        return "No change before replay end"
+        return "no change in replay"
     hrs = (t[idx + j[0]] - t[idx]).total_seconds() / 3600
-    return f"{'Ends' if v[idx] else 'Starts'} in {hrs:.0f} h"
+    return f"{'ends' if v[idx] else 'starts'} in {hrs:.0f} h"
 
 
-k = st.columns(4)
-k[0].markdown(ui.kcard("wb_sunny", "Sun disc above terrain", f"{f0.sun_frac * 100:.0f}%",
-                       f"El {f0.sun_el_deg:+.2f}° · terrain {f0.horizon_at_sun_deg:+.2f}°", ui.SUN),
-              unsafe_allow_html=True)
-k[1].markdown(ui.kcard("public", "Earth", "In view" if f0.earth_in_view else "Behind terrain",
-                       f"El {f0.earth_el_deg:+.2f}° · terrain {f0.horizon_at_earth_deg:+.2f}°",
-                       ui.EARTH if f0.earth_in_view else ui.GREY), unsafe_allow_html=True)
-k[2].markdown(ui.kcard("light_mode", "Sunlight (power)", "ON" if f0.sunlit else "OFF", next_change("sunlit"),
-                       ui.SUN if f0.sunlit else ui.GREY), unsafe_allow_html=True)
-k[3].markdown(ui.kcard("cell_tower", "Potential DTE (geometric)", "ON" if f0.earth_in_view else "OFF",
-                       next_change("earth_in_view"), ui.EARTH if f0.earth_in_view else ui.GREY), unsafe_allow_html=True)
-st.markdown(f'<div style="color:#8FA4B0;font-size:0.82rem;margin:4px 0 8px 2px">At selected time '
-            f'{ui.doy(t[idx])}. Move the time slider above, or press ▶ Play in the Panorama tab.</div>',
-            unsafe_allow_html=True)
+def status_row(icon, color, title, on, detail):
+    c = color if on else ui.GREY
+    return (f'<div class="rw" style="align-items:flex-start;padding:6px 0;border-bottom:1px solid #15303F">'
+            f'<span>{ui.mi(icon, 20, c)}<b style="color:#E6F1F5">{title}</b><br>'
+            f'<span style="color:#8FA4B0;font-size:0.8rem;margin-left:28px">{detail}</span></span>'
+            f'<b style="color:{c}">{"YES" if on else "NO"}</b></div>')
+
+
+with colctl:
+    with st.container(key="card_skynow"):
+        ui.card_title("visibility", "At selected time")
+        st.markdown(
+            '<div class="lln-st" style="border:none;background:none;padding:0;margin:0">'
+            + status_row("wb_sunny", ui.SUN, "Sunlight (power)", bool(f0.sunlit),
+                         f"{f0.sun_frac * 100:.0f}% of disc visible · {next_change('sunlit')}")
+            + status_row("public", ui.EARTH, "Earth in view (DTE)", bool(f0.earth_in_view),
+                         f"geometric · {next_change('earth_in_view')}")
+            + f'<div class="mut" style="margin-top:8px">Sun: El {f0.sun_el_deg:+.2f}°, Az {f0.sun_az_deg:.1f}°, '
+              f'clears terrain by {f0.sun_el_deg - f0.horizon_at_sun_deg:+.2f}°<br>Earth: El {f0.earth_el_deg:+.2f}°, '
+              f'Az {f0.earth_az_deg:.1f}°, clears terrain by {f0.earth_el_deg - f0.horizon_at_earth_deg:+.2f}°</div>'
+              '</div>', unsafe_allow_html=True)
+
+with col3d:
+    with st.container(key="card_3d"):
+        ui.card_title("view_in_ar", "3D Observer View", "real NASA LOLA terrain · drag to rotate, scroll to zoom")
+        fig3 = ui.observer_3d(site, f0, hp, exag=2.0, height=640)
+        if fig3 is None:
+            st.info("3D terrain tile not available for this site.")
+        else:
+            st.plotly_chart(fig3, width="stretch", config={"displaylogo": False, "scrollZoom": True,
+                                                           "modeBarButtonsToRemove": ["toImage"]})
+            st.caption("Terrain within 40 km of the station, shaded by the Sun at the selected time; heights ×2. "
+                       "Solid line = in view, dashed grey = behind terrain. Visibility uses all terrain out to 150 km.")
 
 az = np.concatenate([hp.az_deg, [360.0]])
 hz = np.concatenate([hp.horizon_el_deg, hp.horizon_el_deg[:1]])
@@ -129,24 +151,11 @@ def play_controls(n, ms=110):
                       bgcolor=ui.BORDER, activebgcolor=ui.EARTH, tickcolor=ui.BORDER)])
 
 
-col_plot, col_geo = st.columns([3.3, 1])
-with col_plot:
-    tab0, tab1, tab2, tab3 = st.tabs([":material/view_in_ar: 3D Observer View", ":material/play_circle: Panorama Replay",
-                                      ":material/center_focus_strong: Telescope Close-Up",
-                                      ":material/radar: All-Sky Chart"])
-
-    # ------------------------------------------------------------------ 0. 3D observer view (real LOLA terrain)
-    with tab0:
-        exag = 3
-        fig3 = ui.observer_3d(site, f0, hp, exag=float(exag), height=600)
-        if fig3 is None:
-            st.info("3D terrain tile not available for this site.")
-        else:
-            st.plotly_chart(fig3, width="stretch", config={"displaylogo": False, "scrollZoom": True,
-                                                           "modeBarButtonsToRemove": ["toImage"]})
-            st.caption("Drag to rotate, scroll to zoom. Real NASA LOLA terrain for 40 km around the station (heights ×3 "
-                       "so the relief is visible). Lines point to the Sun and Earth at the selected time: solid = in "
-                       "view, dashed grey = behind terrain. Visibility is computed with all terrain out to 150 km.")
+st.markdown(f'<div class="lln-sec">{ui.mi("insights")}More views<span class="lln-tag">same site and replay</span></div>',
+            unsafe_allow_html=True)
+with st.container():
+    tab1, tab2, tab3 = st.tabs([":material/play_circle: Panorama Replay", ":material/center_focus_strong: Telescope Close-Up",
+                                ":material/radar: All-Sky Chart"])
 
     # ------------------------------------------------------------------ 1. panorama animation
     with tab1:
@@ -264,27 +273,8 @@ with col_plot:
         st.plotly_chart(fig, width="stretch")
 
 
-with col_geo:
-    with st.container(key="card_geo"):
-        ui.card_title("explore", "Geometry", "at selected time")
-
-        def row(icon, color, lab, val):
-            return (f'<div class="rw"><span>{ui.mi(icon, 18, color)}{lab}</span><b>{val}</b></div>')
-
-        crossing = next_change("sunlit").replace("Ends", "Sunset").replace("Starts", "Sunrise")
-        st.markdown(
-            '<div class="lln-st" style="border:none;background:none;padding:0">'
-            + row("wb_sunny", ui.SUN, "Sun azimuth", f"{f0.sun_az_deg:.1f}°")
-            + row("wb_sunny", ui.SUN, "Sun elevation", f"{f0.sun_el_deg:+.2f}°")
-            + row("terrain", ui.SUN, "Sun clearance", f"{f0.sun_el_deg - f0.horizon_at_sun_deg:+.2f}°")
-            + row("public", ui.EARTH, "Earth azimuth", f"{f0.earth_az_deg:.1f}°")
-            + row("public", ui.EARTH, "Earth elevation", f"{f0.earth_el_deg:+.2f}°")
-            + row("terrain", ui.EARTH, "Earth clearance", f"{f0.earth_el_deg - f0.horizon_at_earth_deg:+.2f}°")
-            + row("event", ui.GREY, "Next Sun crossing", crossing.replace("No change", "None"))
-            + '<div class="mut">Clearance = elevation above the terrain skyline in that direction. '
-              'Negative = hidden.</div></div>', unsafe_allow_html=True)
-    with st.expander("How to read this view", icon=":material/help:"):
-        st.markdown("- **3D Observer View**: real LOLA terrain for 40 km around the station. Heights are shown ×3, and the Sun/Earth directions are scaled the same way, so the picture stays geometrically consistent.\n- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
+with st.expander("How to read these views", icon=":material/help:"):
+    st.markdown("- **3D Observer View**: real LOLA terrain for 40 km around the station. Heights are shown ×2, and the Sun/Earth directions are scaled the same way, so the picture stays geometrically consistent.\n- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
                     "Symbols are enlarged; vertical scale is exaggerated (polar Sun angles are only a few degrees).\n"
                     "- **Telescope**: follows one body at its true angular size (Earth ≈ 1.9°, Sun ≈ 0.53°), with "
                     "terrain drawn in front, so you see exactly how much clears the skyline.\n"
