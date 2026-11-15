@@ -17,11 +17,11 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 |---|---|
 | 🏠 **Home** | South-pole map and two entry points: **Explorer Mode** (three guided questions: where, when, why the date matters) and **Mission Control Mode** (full analysis) |
 | 🚀 **Mission Overview** | Pick sites, surface start and stay. Top row: setup, terrain map (click a site to focus it) and a simulated mission clock (UTC day-of-year, MET) with upcoming AOS/LOS, sunrise/sunset and DSN events. Then a **Mission Decision Summary** (best modeled site, ties shown as ties, worst case over +24/+48 h start shifts), site status at the selected time, and tabs for site comparison, **Deep Space Network** geometry (Goldstone, Madrid, Canberra), visibility timeline, schedule risk and storage |
-| 🔭 **Sky View** | Stand at a site: animated panorama of the Sun and Earth over the real terrain skyline (drawn hollow when behind terrain), a true-size telescope close-up with terrain in front, an all-sky horizon chart, and a **Now (UTC)** mode |
+| 🔭 **Sky View** | Stand at a site: a rotatable **3D observer view** built from NASA LOLA terrain (with the full 150 km skyline and the Sun/Earth at their true directions), an animated panorama of the Sun and Earth over the real terrain skyline (drawn hollow when behind terrain), a true-size telescope close-up with terrain in front, an all-sky horizon chart, and a **Now (UTC)** mode |
 | 📅 **Date Finder** | Best surface-start dates per site (2026–2031) with tie-aware ranks, one-click **Open in Mission Overview**, and a calendar heatmap |
 | ✅ **Validation & Sources** | Validation summary (scope of each check), then JPL Horizons comparison, physics checks and tests, terrain status, data sources, limitations and AI-use statement |
 
-Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
+The 3D views use small LOLA tiles in `data/terrain3d.npz` (made by `scripts/make_terrain3d.py`); the Mission Overview map also has a rotatable 3D relief view and box zoom. Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
 
 ## Run it
 

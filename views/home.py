@@ -24,7 +24,7 @@ with c_map:
     with st.container(key="card_home_map"):
         shown = [s for s in ui.DEFAULT_SITE_IDS if s in names] or list(names)[:4]
         st.plotly_chart(ui.south_pole_map(shown, None, height=470), width="stretch",
-                        config={"displayModeBar": False, "scrollZoom": False})
+                        config=ui.MAP_CONFIG)
         st.caption(f"{len(shown)} of {len(names)} candidate sites shown, on NASA LOLA terrain around the lunar "
                    "south pole. Sites are representative points in NASA's Artemis III candidate regions.")
 with c_modes:

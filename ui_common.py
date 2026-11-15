@@ -329,6 +329,11 @@ def weights_sidebar(expander: bool = True) -> ScoreWeights:
 
 
 # ------------------------------------------------------------------ south-pole map
+# 2D map: drag a box to zoom, double-click (or the house button) to reset; mouse wheel does not zoom the page
+MAP_CONFIG = {"displaylogo": False, "scrollZoom": False,
+              "modeBarButtonsToRemove": ["toImage", "select2d", "lasso2d", "autoScale2d"]}
+
+
 def polar_xy_km(lat_deg, lon_deg):
     """South-polar stereographic (true scale at the pole, R = 1737.4 km) — same projection as the LOLA DEMs."""
     rho = 2 * R_MOON_KM * np.tan(np.radians((90 + np.asarray(lat_deg, float)) / 2))
@@ -431,11 +436,11 @@ def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, high
     bx, by = cx - span / 2 + 18, cy - span / 2 + 14
     fig.add_shape(type="line", x0=bx, x1=bx + 50, y0=by, y1=by, line=dict(color="white", width=3))
     fig.add_annotation(x=bx + 25, y=by, text="50 km", showarrow=False, yshift=10, font=dict(color="white", size=11))
-    fig.update_xaxes(range=[cx - span / 2, cx + span / 2], visible=False, fixedrange=True, constrain="domain")
+    fig.update_xaxes(range=[cx - span / 2, cx + span / 2], visible=False, constrain="domain")
     fig.update_yaxes(range=[cy - span / 2, cy + span / 2], visible=False, scaleanchor="x", scaleratio=1,
-                     fixedrange=True, constrain="domain")
+                     constrain="domain")
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      dragmode=False)
+                      dragmode="zoom", uirevision="southpole")
     return fig
 
 
@@ -463,3 +468,126 @@ def footer(link: bool = True):
                'NASA Space Apps 2026.</div>', unsafe_allow_html=True)
     if link:
         b.page_link("views/validation.py", label="Validation & Sources", icon=":material/fact_check:")
+
+
+# ------------------------------------------------------------------ 3D terrain (real LOLA tiles, data/terrain3d.npz)
+@st.cache_resource
+def terrain3d():
+    p = ROOT / "data" / "terrain3d.npz"
+    return dict(np.load(p)) if p.exists() else None
+
+
+MOON_GREYS = [[0, "#1B1E24"], [0.35, "#4A4F58"], [0.7, "#8C9099"], [1, "#D6D8DC"]]
+
+
+def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int = 600):
+    """3D view from the site: LOLA terrain within 40 km (east/north/up, lunar curvature included), the full
+    150 km skyline drawn as a ring, and the Sun and Earth placed along their true azimuth/elevation."""
+    t = terrain3d()
+    if t is None or f"site_{site_id}" not in t:
+        return None
+    z = t[f"site_{site_id}"].astype(float)
+    xs, ys, ulx, uly = t[f"xy_{site_id}"] / 1000.0
+    cell = float(t["meta"][1]) / 1000.0
+    n = z.shape[0]
+    XX, YY = np.meshgrid(ulx + (np.arange(n) + 0.5) * cell, uly - (np.arange(n) + 0.5) * cell)
+    dx, dy = XX - xs, YY - ys
+    lon = np.radians(float(sites_df().set_index("site_id").loc[site_id, "lon_deg"]))
+    E = dx * np.cos(lon) - dy * np.sin(lon)            # local east (km)   — orientation checked against
+    N = dx * np.sin(lon) + dy * np.cos(lon)            # local north (km)    the stored horizon profiles
+    h0 = horizon_prof.site_height_m
+    rr = np.hypot(E, N)
+    Z = ((z - h0) / 1000.0 - rr ** 2 / (2 * R_MOON_KM)) * exag
+    Z[rr > 38.0] = np.nan                                 # round 38 km disc, matching the skyline ring
+    fig = go.Figure()
+    sun_dir = np.array([np.sin(np.radians(row.sun_az_deg)), np.cos(np.radians(row.sun_az_deg)),
+                        np.tan(np.radians(max(row.sun_el_deg, 0.5))) * exag])
+    fig.add_trace(go.Surface(x=E, y=N, z=Z, surfacecolor=z, colorscale=MOON_GREYS, showscale=False,
+                             hoverinfo="skip", name="LOLA terrain",
+                             lighting=dict(ambient=0.35, diffuse=0.9, specular=0.05, roughness=0.9),
+                             lightposition=dict(x=float(sun_dir[0] * 1e5), y=float(sun_dir[1] * 1e5),
+                                                z=float(sun_dir[2] * 1e5))))
+    # full 150 km skyline, projected onto a ring at 38 km
+    ring = 38.0
+    az = np.radians(np.append(horizon_prof.az_deg, 360.0))
+    hz = np.append(horizon_prof.horizon_el_deg, horizon_prof.horizon_el_deg[0])
+    fig.add_trace(go.Scatter3d(x=ring * np.sin(az), y=ring * np.cos(az), z=ring * np.tan(np.radians(hz)) * exag,
+                               mode="lines", line=dict(color="rgba(230,240,245,0.75)", width=3),
+                               name="Skyline from terrain to 150 km", hoverinfo="skip"))
+    for lab, a in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
+        fig.add_trace(go.Scatter3d(x=[41 * np.sin(np.radians(a))], y=[41 * np.cos(np.radians(a))], z=[0], mode="text",
+                                   text=[f"<b>{lab}</b>"], textfont=dict(color="#E6F1F5", size=15), showlegend=False,
+                                   hoverinfo="skip"))
+    fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[0.05 * exag], mode="markers+text", text=["Observer (2 m)"],
+                               textposition="bottom center", textfont=dict(color="#7FF0DD", size=13),
+                               marker=dict(size=7, color=TEAL, line=dict(color="white", width=2)), name="Observer",
+                               hoverinfo="skip"))
+    D = 47.0                                               # just beyond the skyline ring
+    for key, nm, col, tpos in (("sun", "Sun", "#FFD36E", "top right"), ("earth", "Earth", EARTH, "top left")):
+        a_, e_ = np.radians(row[f"{key}_az_deg"]), row[f"{key}_el_deg"]
+        clear = e_ - row[f"horizon_at_{key}_deg"]
+        vis = (row.sun_frac > 0) if key == "sun" else bool(row.earth_in_view)
+        p = [D * np.sin(a_), D * np.cos(a_), D * np.tan(np.radians(e_)) * exag]
+        c = col if vis else "#8A93A6"
+        fig.add_trace(go.Scatter3d(x=[0, p[0]], y=[0, p[1]], z=[0.05 * exag, p[2]], mode="lines",
+                                   line=dict(color=c, width=4, dash="solid" if vis else "dash"), showlegend=False,
+                                   hoverinfo="skip"))
+        fig.add_trace(go.Scatter3d(
+            x=[p[0]], y=[p[1]], z=[p[2]], mode="markers+text", name=nm,
+            text=[f"<b>{nm}</b> {e_:+.2f}°" + ("" if vis else " (hidden)")],
+            textposition=tpos, textfont=dict(color=c, size=14),
+            marker=dict(size=13 if key == "sun" else 11, color=c if vis else "rgba(0,0,0,0)",
+                        line=dict(color=c, width=3)), hoverinfo="skip"))
+    back = -sun_dir[:2] / np.linalg.norm(sun_dir[:2])
+    fig.update_layout(
+        height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", uirevision=site_id,
+        font=dict(family=FONT, color="#C9D1E3"), showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=0.0, x=0.01, bgcolor="rgba(6,19,31,0.6)"),
+        scene=dict(bgcolor="#03050C", aspectmode="data",
+                   xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
+                   camera=dict(eye=dict(x=float(back[0]) * 1.15, y=float(back[1]) * 1.15, z=0.42),
+                               center=dict(x=0, y=0, z=-0.1))))
+    return fig
+
+
+def region_3d(site_ids, status: dict | None = None, scores: dict | None = None, highlight: str | None = None,
+              exag: float = 4.0, height: int = 470):
+    """Rotatable 3D relief of the south-pole region from the LOLA DEM (~1 km cells), with the sites marked."""
+    t = terrain3d()
+    if t is None:
+        return None
+    z = t["region"].astype(float)[::2, ::2]
+    ulx, uly, cell = t["region_ul"] / 1000.0
+    cell *= 2
+    n0, n1 = z.shape
+    X = ulx + (np.arange(n1) + 0.5) * cell
+    Y = uly - (np.arange(n0) + 0.5) * cell
+    fig = go.Figure(go.Surface(x=X, y=Y, z=z / 1000.0 * exag, surfacecolor=z, colorscale=MOON_GREYS,
+                               showscale=False, hoverinfo="skip",
+                               lighting=dict(ambient=0.45, diffuse=0.85, specular=0.05, roughness=0.9),
+                               lightposition=dict(x=-1e5, y=1e5, z=5e4)))
+    s = sites_df().set_index("site_id")
+    ids = [i for i in site_ids if i in s.index]
+    x, y = polar_xy_km(s.loc[ids, "lat_deg"].values, s.loc[ids, "lon_deg"].values)
+    zz = s.loc[ids, "height_m"].astype(float).values / 1000.0 * exag + 1.5
+    cols, labs = [], []
+    for sid in ids:
+        if status is not None and sid in status:
+            cols.append(STATUS[status[sid]][1])
+        elif scores is not None and sid in scores:
+            cols.append(rating(scores[sid])[1])
+        else:
+            cols.append(site_color(sid))
+        labs.append(f"<b>{s.loc[sid, 'name']}</b>")
+    fig.add_trace(go.Scatter3d(x=x, y=y, z=zz, mode="markers+text", text=labs, textposition="top center",
+                               textfont=dict(color=[AMBER if i == highlight else "white" for i in ids], size=13),
+                               marker=dict(size=[9 if i == highlight else 6 for i in ids], color=cols,
+                                           line=dict(color="white", width=2), symbol="diamond"), hoverinfo="skip"))
+    fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[float(np.nanmax(z)) / 1000 * exag * 0.2], mode="text",
+                               text=["South Pole"], textfont=dict(color="#E6F1F5", size=12), hoverinfo="skip"))
+    fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
+                      showlegend=False, uirevision="region3d",
+                      scene=dict(bgcolor="#03050C", aspectmode="data",
+                                 xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
+                                 camera=dict(eye=dict(x=0.0, y=-1.55, z=1.65), center=dict(x=0, y=0, z=-0.25))))
+    return fig

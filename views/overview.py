@@ -208,14 +208,20 @@ with col_clock:
 
 with col_map:
     with st.container(key="card_map"):
-        a, b = st.columns([1.15, 1], vertical_alignment="center")
+        v_, a, b = st.columns([0.8, 1.25, 1], vertical_alignment="center")
+        view = v_.segmented_control("View", ["2D", "3D"], default="2D", label_visibility="collapsed") or "2D"
         color_by = a.segmented_control("Map colour", ["At selected time", "Mission rating"],
                                        default="At selected time", label_visibility="collapsed")
         focus = b.selectbox("Focus site", chosen, format_func=names.get, key="m_site", label_visibility="collapsed")
-        st.plotly_chart(ui.south_pole_map(chosen, worst.to_dict(), height=470, highlight=focus,
-                                          status=status if color_by != "Mission rating" else None),
-                        width="stretch", config={"displayModeBar": False, "scrollZoom": False},
-                        on_select="rerun", selection_mode="points", key="ov_map")
+        stat_ = status if color_by != "Mission rating" else None
+        fig3 = ui.region_3d(chosen, status=stat_, scores=worst.to_dict(), highlight=focus) if view == "3D" else None
+        if fig3 is not None:
+            st.plotly_chart(fig3, width="stretch", config={"displaylogo": False, "scrollZoom": True,
+                                                           "modeBarButtonsToRemove": ["toImage"]})
+        else:
+            st.plotly_chart(ui.south_pole_map(chosen, worst.to_dict(), height=470, highlight=focus, status=stat_),
+                            width="stretch", config=ui.MAP_CONFIG,
+                            on_select="rerun", selection_mode="points", key="ov_map")
         if color_by != "Mission rating":
             legend = " ".join(ui.chip(l_, c_) for l_, c_ in ui.STATUS.values())
         else:
@@ -223,8 +229,10 @@ with col_map:
                               [("Excellent", "≥90", "#3DDC97"), ("Good", "70–89", "#4C8DFF"),
                                ("Fair", "40–69", "#FFB02E"), ("Poor", "<40", "#FF6B8B")])
         c1, c2 = st.columns([1.6, 1], vertical_alignment="center")
-        c1.markdown(legend + '<div style="color:#8FA4B0;font-size:0.8rem;margin-top:4px">Click a site to focus it.'
-                    '</div>', unsafe_allow_html=True)
+        tip = ("Drag to rotate, scroll to zoom · NASA LOLA relief, heights ×4" if view == "3D" else
+               "Click a site to focus it · drag a box to zoom, double-click to reset")
+        c1.markdown(legend + f'<div style="color:#8FA4B0;font-size:0.8rem;margin-top:4px">{tip}</div>',
+                    unsafe_allow_html=True)
         c2.page_link("views/sky_view.py", label=f"Sky View: {names[focus]}", icon=":material/satellite_alt:")
 
 # ================================================================== LEVEL 2 — Mission Decision Summary

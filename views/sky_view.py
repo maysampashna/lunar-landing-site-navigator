@@ -26,7 +26,8 @@ r = sites.loc[st.session_state["m_site"]]
 ui.banner("satellite_alt", f"Sky View — {r['name']}",
           f"{abs(r.lat_deg):.2f}° S, {r.lon_deg:.2f}° E · observer 2 m above the surface · LOLA terrain horizon to "
           "150 km · NASA/JPL SPICE positions")
-with st.container(key="card_skyctl"):
+toolbar = st.container(key="card_skyctl")
+with toolbar:
     c = st.columns([1.5, 1.15, 1.15, 0.75, 1.25], vertical_alignment="bottom")
     site = c[0].selectbox("Site", ids, format_func=names.get, key="m_site")
     mode = c[1].segmented_control("Mode", ["Mission replay", "Now (UTC)"], default="Mission replay")
@@ -50,16 +51,20 @@ if hp is None or not live.kernels_available():
 end = start + pd.Timedelta(days=days)
 w = live.fine_visibility(r, hp, start, end, visibility.VisParams(), step_min=60).reset_index(drop=True)
 t = pd.DatetimeIndex(w.time_utc)
-f0 = w.iloc[0]
+with toolbar:
+    t_pick = st.select_slider("Selected time (UTC)", options=list(range(len(t))), value=0,
+                              format_func=lambda i: f"{t[i]:%b %d %H:%M}")
+idx = int(t_pick)
+f0 = w.iloc[idx]
 
 
 def next_change(col):
     v = w[col].to_numpy(bool)
-    idx = np.flatnonzero(v != v[0])
-    if not len(idx):
-        return f"No change in {days} d"
-    hrs = (t[idx[0]] - t[0]).total_seconds() / 3600
-    return f"{'Ends' if v[0] else 'Starts'} in {hrs:.0f} h"
+    j = np.flatnonzero(v[idx:] != v[idx])
+    if not len(j):
+        return "No change before replay end"
+    hrs = (t[idx + j[0]] - t[idx]).total_seconds() / 3600
+    return f"{'Ends' if v[idx] else 'Starts'} in {hrs:.0f} h"
 
 
 k = st.columns(4)
@@ -73,8 +78,8 @@ k[2].markdown(ui.kcard("light_mode", "Sunlight (power)", "ON" if f0.sunlit else 
                        ui.SUN if f0.sunlit else ui.GREY), unsafe_allow_html=True)
 k[3].markdown(ui.kcard("cell_tower", "Potential DTE (geometric)", "ON" if f0.earth_in_view else "OFF",
                        next_change("earth_in_view"), ui.EARTH if f0.earth_in_view else ui.GREY), unsafe_allow_html=True)
-st.markdown(f'<div style="color:#8FA4B0;font-size:0.82rem;margin:4px 0 8px 2px">Cards show the replay start, '
-            f'{ui.doy(t[0])}. Press ▶ Play on the chart to step through the stay hour by hour.</div>',
+st.markdown(f'<div style="color:#8FA4B0;font-size:0.82rem;margin:4px 0 8px 2px">At selected time '
+            f'{ui.doy(t[idx])}. Move the time slider above, or press ▶ Play in the Panorama tab.</div>',
             unsafe_allow_html=True)
 
 az = np.concatenate([hp.az_deg, [360.0]])
@@ -119,14 +124,30 @@ def play_controls(n, ms=110):
                                                          transition=dict(duration=0))]),
                                    dict(label="⏸ Pause", method="animate",
                                         args=[[None], dict(frame=dict(duration=0), mode="immediate")])])],
-        sliders=[dict(active=0, steps=steps, x=0.16, len=0.84, y=-0.05, pad=dict(t=0),
+        sliders=[dict(active=idx, steps=steps, x=0.16, len=0.84, y=-0.05, pad=dict(t=0),
                       currentvalue=dict(visible=False), font=dict(color="#9AA4B8", size=9),
                       bgcolor=ui.BORDER, activebgcolor=ui.EARTH, tickcolor=ui.BORDER)])
 
 
 col_plot, col_geo = st.columns([3.3, 1])
 with col_plot:
-    tab1, tab2, tab3 = st.tabs([":material/play_circle: Panorama Replay", ":material/center_focus_strong: Telescope Close-Up", ":material/radar: All-Sky Horizon Chart"])
+    tab0, tab1, tab2, tab3 = st.tabs([":material/view_in_ar: 3D Observer View", ":material/play_circle: Panorama Replay",
+                                      ":material/center_focus_strong: Telescope Close-Up",
+                                      ":material/radar: All-Sky Chart"])
+
+    # ------------------------------------------------------------------ 0. 3D observer view (real LOLA terrain)
+    with tab0:
+        exag = st.segmented_control("Vertical exaggeration", [1, 2, 3, 5], default=3, format_func=lambda v: f"{v}×",
+                                    label_visibility="collapsed") or 3
+        fig3 = ui.observer_3d(site, f0, hp, exag=float(exag), height=600)
+        if fig3 is None:
+            st.info("3D terrain tile not available for this site.")
+        else:
+            st.plotly_chart(fig3, width="stretch", config={"displaylogo": False, "scrollZoom": True,
+                                                           "modeBarButtonsToRemove": ["toImage"]})
+            st.caption(f"Drag to rotate, scroll to zoom. NASA LOLA terrain within 40 km (320 m cells, heights ×{exag}, "
+                       "lunar curvature included). The white ring is the full skyline from terrain out to 150 km, "
+                       "which decides visibility. Solid line = in view; dashed grey = behind terrain.")
 
     # ------------------------------------------------------------------ 1. panorama animation
     with tab1:
@@ -160,7 +181,7 @@ with col_plot:
                          ticktext=["N 0°", "NE", "E 90°", "SE", "S 180°", "SW", "W 270°", "NW", "N"], title=None)
         fig.update_yaxes(range=[ymin, ymax], title="Elevation (°)")
         fig = ui.style_fig(fig, 580)
-        fig.update_layout(title=dict(text=label(0), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w)),
+        fig.update_layout(title=dict(text=label(idx), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w)),
                           plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=78, b=95),
                           legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
         fig.update_layout(title=dict(y=0.985, yref="container", x=0.01, xanchor="left"))
@@ -185,10 +206,10 @@ with col_plot:
             return a, hp.at(a % 360)
 
         fig = go.Figure()
-        dx, dy = disc(0)
+        dx, dy = disc(idx)
         fig.add_trace(go.Scatter(x=dx, y=dy, fill="toself", mode="lines", fillcolor=col, line=dict(color="white", width=1),
                                  name=f"{body.split(' ')[-1]} (true angular size)"))
-        ax_, hz_ = terrain_window(w.iloc[0][f"{key}_az_deg"])
+        ax_, hz_ = terrain_window(w.iloc[idx][f"{key}_az_deg"])
         fig.add_trace(go.Scatter(x=ax_, y=np.full_like(ax_, -30), mode="lines", line=dict(width=0),
                                  showlegend=False, hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=ax_, y=hz_, fill="tonexty", mode="lines", line=dict(color="#9AA4B8"),
@@ -204,11 +225,11 @@ with col_plot:
                 layout=dict(title=dict(text=label(i)), xaxis=dict(range=[cz - fov, cz + fov]),
                             yaxis=dict(range=[ce - fov * 0.55, ce + fov * 0.55]))))
         fig.frames = frames
-        cz, ce = w.iloc[0][f"{key}_az_deg"], w.iloc[0][f"{key}_el_deg"]
+        cz, ce = w.iloc[idx][f"{key}_az_deg"], w.iloc[idx][f"{key}_el_deg"]
         fig.update_xaxes(range=[cz - fov, cz + fov], title="Azimuth (°)")
         fig.update_yaxes(range=[ce - fov * 0.55, ce + fov * 0.55], title="Elevation (°)", scaleanchor="x", scaleratio=1)
         fig = ui.style_fig(fig, 580)
-        fig.update_layout(title=dict(text=label(0), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w), 140),
+        fig.update_layout(title=dict(text=label(idx), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w), 140),
                           plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=78, b=95),
                           legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
         fig.update_layout(title=dict(y=0.985, yref="container", x=0.01, xanchor="left"))
@@ -246,7 +267,7 @@ with col_plot:
 
 with col_geo:
     with st.container(key="card_geo"):
-        ui.card_title("explore", "Geometry", "replay start")
+        ui.card_title("explore", "Geometry", "at selected time")
 
         def row(icon, color, lab, val):
             return (f'<div class="rw"><span>{ui.mi(icon, 18, color)}{lab}</span><b>{val}</b></div>')
@@ -264,7 +285,7 @@ with col_geo:
             + '<div class="mut">Clearance = elevation above the terrain skyline in that direction. '
               'Negative = hidden.</div></div>', unsafe_allow_html=True)
     with st.expander("How to read this view", icon=":material/help:"):
-        st.markdown("- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
+        st.markdown("- **3D Observer View**: real LOLA terrain around the site; the white ring is the full 150 km skyline. Heights are exaggerated (default 3×) and the Sun/Earth directions are exaggerated by the same factor, so what looks hidden is hidden.\n- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
                     "Symbols are enlarged; vertical scale is exaggerated (polar Sun angles are only a few degrees).\n"
                     "- **Telescope**: follows one body at its true angular size (Earth ≈ 1.9°, Sun ≈ 0.53°), with "
                     "terrain drawn in front, so you see exactly how much clears the skyline.\n"
