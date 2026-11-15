@@ -15,10 +15,13 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 
 | Page | What you get |
 |---|---|
-| 🚀 **Mission Control** | Pick sites, landing time and stay. A NASA-style mission clock (UTC day-of-year, MET) lets you scrub to any second; a **Station availability** board shows each site's power and communication status, a **Deep Space Network** panel shows which complex (Goldstone, Madrid, Canberra) can see the Moon, an upcoming-events list gives AOS/LOS, sunrise/sunset and DSN handovers, and the ranking section recommends the best landing site with schedule-risk and battery analysis |
+| 🏠 **Home** | South-pole map and two entry points: **Explorer Mode** (visual, plain language) and **Mission Control Mode** (decision analysis) |
+| 🚀 **Mission Overview** | Pick sites, landing time and stay. A NASA-style mission clock (UTC day-of-year, MET) lets you scrub to any second; a **Station availability** board shows each site's power and communication status, a **Deep Space Network** panel shows which complex (Goldstone, Madrid, Canberra) can see the Moon, an upcoming-events list gives AOS/LOS, sunrise/sunset and DSN handovers, and the ranking section recommends the best landing site with schedule-risk and battery analysis |
 | 🔭 **Sky View** | Stand at a site: animated panorama of the Sun and Earth moving over the real terrain skyline, a true-size telescope close-up, an all-sky horizon chart, and a **Live now** mode for the current sky |
 | 📅 **Date Finder** | Best surface-start dates per site (2026–2031) and a calendar heatmap |
 | ✅ **Validation & Sources** | JPL Horizons comparison, built-in physics checks, terrain status, data citations, AI-use statement |
+
+Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
 
 ## Run it
 

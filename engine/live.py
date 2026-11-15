@@ -48,7 +48,7 @@ def at_time(site: pd.Series, horizon: HorizonProfile | None, when, params: visib
     eph = sky().compute(site.lat_deg, site.lon_deg, h, idx)
     d = coverage(moon_elevations(sky(), idx), dsn_mask_deg)
     v = visibility.compute(eph, horizon, params, dsn_any=d["dsn_any"].to_numpy())
-    return pd.concat([v.iloc[0], d.drop(columns="time_utc").iloc[0]])
+    return pd.concat([v.iloc[0], d.drop(columns=["time_utc", "dsn_any"]).iloc[0]])
 
 
 def fine_visibility(site: pd.Series, horizon: HorizonProfile | None, start, end, params: visibility.VisParams,

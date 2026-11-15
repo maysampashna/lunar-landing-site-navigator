@@ -13,13 +13,13 @@ import streamlit as st
 from engine import live
 import ui_common as ui
 
-ui.setup_page("Validation & Sources · Lunar Navigator", "✅")
-st.title("✅ Validation & Sources")
+ui.setup_page()
+ui.banner("fact_check", "Validation & Sources", "Evidence behind every number: JPL Horizons comparison, physics checks, terrain status, data citations and AI use.", ui.validated_pill())
 names = ui.names()
 sites = ui.sites_df()
 
 # ------------------------------------------------------------------ 1. ephemeris vs Horizons
-st.header("1 · Ephemeris validation vs JPL Horizons (positions only)")
+st.markdown(f'<div class="lln-sec">{ui.mi("verified")}1 · Ephemeris validation vs JPL Horizons (positions only)</div>', unsafe_allow_html=True)
 v = ui.validation_report()
 if v:
     rows = [{"site": names.get(sid, sid), "body": body, "n": r["n"],
@@ -34,7 +34,7 @@ else:
 st.caption("This checks Sun/Earth positions only — not terrain, visibility or power.")
 
 # ------------------------------------------------------------------ 2. built-in physics checks
-st.header("2 · Built-in physics checks (computed live)")
+st.markdown(f'<div class="lln-sec">{ui.mi("science")}2 · Built-in physics checks (computed live)</div>', unsafe_allow_html=True)
 checks = []
 for _, s in sites.iterrows():
     e = ui.ephem(s.site_id)
@@ -57,7 +57,7 @@ st.caption("Terrain orientation is unit-tested with synthetic mountains at known
            "longitudes (tests/test_engine.py), guarding against rotated horizons from the polar-stereographic grid.")
 
 # ------------------------------------------------------------------ 3. terrain status
-st.header("3 · Terrain horizons and site points")
+st.markdown(f'<div class="lln-sec">{ui.mi("terrain")}3 · Terrain horizons and site points</div>', unsafe_allow_html=True)
 trows = []
 for _, s in sites.iterrows():
     hp = ui.horizon(s.site_id)
@@ -73,7 +73,7 @@ st.caption("Horizons: LOLA 80 m DEM near field + 240 m far field to 150 km, obse
            "are 'uncertain' and excluded from confident rankings.")
 
 # ------------------------------------------------------------------ 4. sources
-st.header("4 · Data sources")
+st.markdown(f'<div class="lln-sec">{ui.mi("database")}4 · Data sources</div>', unsafe_allow_html=True)
 st.markdown("""
 | Data | Source | Used for |
 |---|---|---|
@@ -85,7 +85,7 @@ st.markdown("""
 | Illumination literature (Mazarico et al. 2011; Gläser et al. 2014) | Icarus | Plausibility comparison |
 """)
 
-st.header("5 · Assumptions & limitations")
+st.markdown(f'<div class="lln-sec">{ui.mi("rule")}5 · Assumptions & limitations</div>', unsafe_allow_html=True)
 st.markdown(f"""
 - Sunlit when ≥ 50 % of the solar disc is above the terrain (adjustable); potential direct-to-Earth visibility when Earth's centre is above terrain + mask.
 - Eclipses: the Sun disc hidden by Earth reduces sunlight and power (circle-overlap model).
@@ -94,7 +94,7 @@ st.markdown(f"""
 - Hourly data for date scanning; Decision Report windows recomputed at 10 minutes.
 - {ui.LIMITATIONS}
 """)
-st.header("6 · Use of AI")
+st.markdown(f'<div class="lln-sec">{ui.mi("smart_toy")}6 · Use of AI</div>', unsafe_allow_html=True)
 st.markdown("We used an AI assistant (Claude, Anthropic) to draft the engine code, tests, data scripts and these "
             "pages, and to help plan the project. The team defined the method and scope, reviewed and corrected the "
             "code, ran the NASA data pipeline, and verified every result (JPL Horizons agreement, physics checks). "
