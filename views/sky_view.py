@@ -137,17 +137,16 @@ with col_plot:
 
     # ------------------------------------------------------------------ 0. 3D observer view (real LOLA terrain)
     with tab0:
-        exag = st.segmented_control("Vertical exaggeration", [1, 2, 3, 5], default=3, format_func=lambda v: f"{v}×",
-                                    label_visibility="collapsed") or 3
+        exag = 3
         fig3 = ui.observer_3d(site, f0, hp, exag=float(exag), height=600)
         if fig3 is None:
             st.info("3D terrain tile not available for this site.")
         else:
             st.plotly_chart(fig3, width="stretch", config={"displaylogo": False, "scrollZoom": True,
                                                            "modeBarButtonsToRemove": ["toImage"]})
-            st.caption(f"Drag to rotate, scroll to zoom. NASA LOLA terrain within 40 km (320 m cells, heights ×{exag}, "
-                       "lunar curvature included). The white ring is the full skyline from terrain out to 150 km, "
-                       "which decides visibility. Solid line = in view; dashed grey = behind terrain.")
+            st.caption("Drag to rotate, scroll to zoom. Real NASA LOLA terrain for 40 km around the station (heights ×3 "
+                       "so the relief is visible). Lines point to the Sun and Earth at the selected time: solid = in "
+                       "view, dashed grey = behind terrain. Visibility is computed with all terrain out to 150 km.")
 
     # ------------------------------------------------------------------ 1. panorama animation
     with tab1:
@@ -285,7 +284,7 @@ with col_geo:
             + '<div class="mut">Clearance = elevation above the terrain skyline in that direction. '
               'Negative = hidden.</div></div>', unsafe_allow_html=True)
     with st.expander("How to read this view", icon=":material/help:"):
-        st.markdown("- **3D Observer View**: real LOLA terrain around the site; the white ring is the full 150 km skyline. Heights are exaggerated (default 3×) and the Sun/Earth directions are exaggerated by the same factor, so what looks hidden is hidden.\n- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
+        st.markdown("- **3D Observer View**: real LOLA terrain for 40 km around the station. Heights are shown ×3, and the Sun/Earth directions are scaled the same way, so the picture stays geometrically consistent.\n- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
                     "Symbols are enlarged; vertical scale is exaggerated (polar Sun angles are only a few degrees).\n"
                     "- **Telescope**: follows one body at its true angular size (Earth ≈ 1.9°, Sun ≈ 0.53°), with "
                     "terrain drawn in front, so you see exactly how much clears the skyline.\n"

@@ -230,7 +230,7 @@ with col_map:
                                ("Fair", "40–69", "#FFB02E"), ("Poor", "<40", "#FF6B8B")])
         c1, c2 = st.columns([1.6, 1], vertical_alignment="center")
         tip = ("Drag to rotate, scroll to zoom · NASA LOLA relief, heights ×4" if view == "3D" else
-               "Click a site to focus it · drag a box to zoom, double-click to reset")
+               "Click a site to focus it · drag to move, +/− to zoom, home button to reset")
         c1.markdown(legend + f'<div style="color:#8FA4B0;font-size:0.8rem;margin-top:4px">{tip}</div>',
                     unsafe_allow_html=True)
         c2.page_link("views/sky_view.py", label=f"Sky View: {names[focus]}", icon=":material/satellite_alt:")

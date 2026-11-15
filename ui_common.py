@@ -329,9 +329,9 @@ def weights_sidebar(expander: bool = True) -> ScoreWeights:
 
 
 # ------------------------------------------------------------------ south-pole map
-# 2D map: drag a box to zoom, double-click (or the house button) to reset; mouse wheel does not zoom the page
+# 2D map: drag to move, +/- buttons to zoom, house button to reset; the mouse wheel scrolls the page
 MAP_CONFIG = {"displaylogo": False, "scrollZoom": False,
-              "modeBarButtonsToRemove": ["toImage", "select2d", "lasso2d", "autoScale2d"]}
+              "modeBarButtonsToRemove": ["toImage", "select2d", "lasso2d", "autoScale2d", "zoom2d"]}
 
 
 def polar_xy_km(lat_deg, lon_deg):
@@ -440,7 +440,7 @@ def south_pole_map(site_ids, scores: dict | None = None, height: int = 520, high
     fig.update_yaxes(range=[cy - span / 2, cy + span / 2], visible=False, scaleanchor="x", scaleratio=1,
                      constrain="domain")
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      dragmode="zoom", uirevision="southpole")
+                      dragmode="pan", uirevision="southpole")
     return fig
 
 
@@ -507,21 +507,21 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int 
                              lighting=dict(ambient=0.35, diffuse=0.9, specular=0.05, roughness=0.9),
                              lightposition=dict(x=float(sun_dir[0] * 1e5), y=float(sun_dir[1] * 1e5),
                                                 z=float(sun_dir[2] * 1e5))))
-    # full 150 km skyline, projected onto a ring at 38 km
-    ring = 38.0
-    az = np.radians(np.append(horizon_prof.az_deg, 360.0))
-    hz = np.append(horizon_prof.horizon_el_deg, horizon_prof.horizon_el_deg[0])
-    fig.add_trace(go.Scatter3d(x=ring * np.sin(az), y=ring * np.cos(az), z=ring * np.tan(np.radians(hz)) * exag,
-                               mode="lines", line=dict(color="rgba(230,240,245,0.75)", width=3),
-                               name="Skyline from terrain to 150 km", hoverinfo="skip"))
     for lab, a in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
         fig.add_trace(go.Scatter3d(x=[41 * np.sin(np.radians(a))], y=[41 * np.cos(np.radians(a))], z=[0], mode="text",
                                    text=[f"<b>{lab}</b>"], textfont=dict(color="#E6F1F5", size=15), showlegend=False,
                                    hoverinfo="skip"))
-    fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[0.05 * exag], mode="markers+text", text=["Observer (2 m)"],
-                               textposition="bottom center", textfont=dict(color="#7FF0DD", size=13),
-                               marker=dict(size=7, color=TEAL, line=dict(color="white", width=2)), name="Observer",
-                               hoverinfo="skip"))
+    site_name = sites_df().set_index("site_id").loc[site_id, "name"]
+    pole = 2.2 * exag / 3.0
+    fig.add_trace(go.Scatter3d(x=[0, 0], y=[0, 0], z=[0, pole], mode="lines", line=dict(color=AMBER, width=8),
+                               showlegend=False, hoverinfo="skip"))
+    fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[pole], mode="markers+text", text=[f"<b>Station · {site_name}</b>"],
+                               textposition="top center", textfont=dict(color=AMBER, size=15),
+                               marker=dict(size=10, color=AMBER, symbol="diamond", line=dict(color="white", width=2)),
+                               name="Station (site)", hoverinfo="skip"))
+    th = np.linspace(0, 2 * np.pi, 60)
+    fig.add_trace(go.Scatter3d(x=1.2 * np.cos(th), y=1.2 * np.sin(th), z=np.full(60, 0.05), mode="lines",
+                               line=dict(color=AMBER, width=5), showlegend=False, hoverinfo="skip"))
     D = 47.0                                               # just beyond the skyline ring
     for key, nm, col, tpos in (("sun", "Sun", "#FFD36E", "top right"), ("earth", "Earth", EARTH, "top left")):
         a_, e_ = np.radians(row[f"{key}_az_deg"]), row[f"{key}_el_deg"]
@@ -529,12 +529,12 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int 
         vis = (row.sun_frac > 0) if key == "sun" else bool(row.earth_in_view)
         p = [D * np.sin(a_), D * np.cos(a_), D * np.tan(np.radians(e_)) * exag]
         c = col if vis else "#8A93A6"
-        fig.add_trace(go.Scatter3d(x=[0, p[0]], y=[0, p[1]], z=[0.05 * exag, p[2]], mode="lines",
+        fig.add_trace(go.Scatter3d(x=[0, p[0]], y=[0, p[1]], z=[0.05, p[2]], mode="lines",
                                    line=dict(color=c, width=4, dash="solid" if vis else "dash"), showlegend=False,
                                    hoverinfo="skip"))
         fig.add_trace(go.Scatter3d(
             x=[p[0]], y=[p[1]], z=[p[2]], mode="markers+text", name=nm,
-            text=[f"<b>{nm}</b> {e_:+.2f}°" + ("" if vis else " (hidden)")],
+            text=[f"<b>{nm}</b> · El {e_:+.2f}° · Az {row[f'{key}_az_deg']:.0f}°" + ("" if vis else " (behind terrain)")],
             textposition=tpos, textfont=dict(color=c, size=14),
             marker=dict(size=13 if key == "sun" else 11, color=c if vis else "rgba(0,0,0,0)",
                         line=dict(color=c, width=3)), hoverinfo="skip"))
@@ -545,7 +545,7 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int 
         legend=dict(orientation="h", yanchor="bottom", y=0.0, x=0.01, bgcolor="rgba(6,19,31,0.6)"),
         scene=dict(bgcolor="#03050C", aspectmode="data",
                    xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
-                   camera=dict(eye=dict(x=float(back[0]) * 1.15, y=float(back[1]) * 1.15, z=0.42),
+                   camera=dict(eye=dict(x=float(back[0]) * 1.3, y=float(back[1]) * 1.3, z=0.75),
                                center=dict(x=0, y=0, z=-0.1))))
     return fig
 
