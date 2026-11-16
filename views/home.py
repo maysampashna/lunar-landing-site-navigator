@@ -41,8 +41,7 @@ def tip(sid):
     h = srow.loc[sid, "height_m"] / 1000.0
     return (f'<div class="tip"><div class="tn">{names[sid]}</div>'
             f'<div class="tx">{ABOUT.get(sid, "")} Elevation {h:+.1f} km.</div>'
-            f'<div class="tx why">{WHY}</div>'
-            '<div class="tf">Shown at a representative point inside the official region.</div></div>')
+            f'<div class="tx why">{WHY}</div></div>')
 
 
 hot = json.loads((ROOT / "assets" / "home_moon_labels.json").read_text())
@@ -140,25 +139,42 @@ else:
                 line = f"{line} {w}".strip()
         return "<br>".join(out + [line])
 
+    CAM = dict(lat=-60.0, dist=0.78, depth=0.42)     # picture-like start: across the pole, horizon on top
+    HOME_EXAG = 3.0
+
     def home_globe(rev):
-        sphere, capxyz, regxyz = ui._globe_mesh()
-        eye_dir = np.array(ui._latlon_xyz(-86.0, 165.0, 1.0))        # oblique, from the 165°E side of the pole
-        f_ = -eye_dir
-        up = np.array([0.0, 0.0, -1.0]); up = up - (up @ eye_dir) * eye_dir; up /= np.linalg.norm(up)
+        sphere, capxyz, regxyz = ui._globe_mesh(HOME_EXAG)
+        pole_u = np.array([0.0, 0.0, -1.0])
+        center = pole_u * CAM["depth"]                                  # pivot inside the Moon, under the pole
+        eye = np.array(ui._latlon_xyz(CAM["lat"], 165.0, 1.0)) * CAM["dist"]
+        f_ = center - eye; f_ /= np.linalg.norm(f_)                     # view direction
+        up = pole_u - (pole_u @ f_) * f_; up /= np.linalg.norm(up)       # pole toward the top of the screen
         right = np.cross(f_, up)
         sun = -0.35 * f_ - 0.90 * right + 0.30 * up                    # from the upper left (illustrative)
         sun /= np.linalg.norm(sun)
         light = dict(x=float(sun[0] * 1e5), y=float(sun[1] * 1e5), z=float(sun[2] * 1e5))
         lit = dict(ambient=0.06, diffuse=1.0, specular=0.02, roughness=0.95, fresnel=0.0)
-        grey = [[0, "#9C9993"], [1, "#9C9993"]]
+        moon = [[0, "#4E4C49"], [0.35, "#7A7772"], [0.7, "#A19D96"], [1, "#C9C5BD"]]
+        rng = np.random.default_rng(3)
+
+        def mottle(shape, scales=((3, 0.5), (8, 0.3), (20, 0.2))):
+            from PIL import Image as _I, ImageFilter as _F
+            out = np.zeros(shape)
+            for blur, wgt in scales:
+                r = (rng.random(shape) * 255).astype(np.uint8)
+                g = np.asarray(_I.fromarray(r).filter(_F.GaussianBlur(blur)), float)
+                out += wgt * (g - g.mean()) / (g.std() + 1e-6)
+            return 0.55 + 0.17 * out
+
         fig = go.Figure()
         for (x, y, z) in (sphere, capxyz, regxyz):
-            fig.add_trace(go.Surface(x=x, y=y, z=z, surfacecolor=np.zeros_like(z), colorscale=grey, showscale=False,
-                                     hoverinfo="skip", lighting=lit, lightposition=light))
+            fig.add_trace(go.Surface(x=x, y=y, z=z, surfacecolor=np.clip(mottle(np.shape(z)), 0, 1), cmin=0, cmax=1,
+                                     colorscale=moon, showscale=False, hoverinfo="skip", lighting=lit,
+                                     lightposition=light))
         ids = list(names)
         pts = np.array(ui._latlon_xyz(srow.loc[ids, "lat_deg"].values, srow.loc[ids, "lon_deg"].values,
                                       ui.R_MOON_KM + srow.loc[ids, "height_m"].astype(float).values / 1000
-                                      * ui.GLOBE_EXAG + 6)).T
+                                      * HOME_EXAG + 6)).T
         fig.add_trace(go.Scatter3d(x=pts[:, 0], y=pts[:, 1], z=pts[:, 2], mode="markers", hoverinfo="skip",
                                    marker=dict(size=7, color="#E6FCFF", line=dict(color="#50DCFF", width=4))))
         sx_, sy_ = pts @ right, pts @ up                              # screen-plane coordinates (km)
@@ -178,18 +194,16 @@ else:
                 bgcolor="rgba(6,22,36,0.92)", bordercolor="#6EE1FF", borderwidth=1.5, borderpad=5,
                 font=dict(color="#F0F8FC", size=13, family=ui.FONT),
                 hovertext=(f"<b>{names[sid]}</b><br>{wrap(ABOUT.get(sid, ''))} Elevation "
-                           f"{srow.loc[sid, 'height_m'] / 1000:+.1f} km.<br><br>{wrap(WHY)}<br><br>"
-                           "<i>Shown at a representative point inside the official region.</i>"),
+                           f"{srow.loc[sid, 'height_m'] / 1000:+.1f} km.<br><br>{wrap(WHY)}"),
                 hoverlabel=dict(bgcolor="rgba(5,16,28,0.97)", bordercolor="#50DCFF",
                                 font=dict(color="#DCE9EF", size=12, family=ui.FONT))))
         L = 1.08 * ui.R_MOON_KM
         ax = dict(visible=False, range=[-L, L])
-        eye = eye_dir * 1.0
         fig.update_layout(height=800, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                           showlegend=False, uirevision=f"home-globe-{rev}", hoverlabel=dict(align="left"),
                           scene=dict(bgcolor="rgba(0,0,0,0)", aspectmode="cube", xaxis=ax, yaxis=ax, zaxis=ax,
                                      dragmode="orbit", annotations=anns,
-                                     camera=dict(center=dict(x=0, y=0, z=0),
+                                     camera=dict(center=dict(zip("xyz", map(float, center))),
                                                  eye=dict(zip("xyz", map(float, eye))),
                                                  up=dict(zip("xyz", map(float, up))))))
         return fig
@@ -203,7 +217,7 @@ else:
         st.plotly_chart(home_globe(rev), width="stretch", key=f"home_globe_{rev}",
                         config={"displayModeBar": False, "scrollZoom": True})
         st.markdown('<div class="lln-ov bot">' + BUTTONS + '</div>', unsafe_allow_html=True)
-    credit = ("NASA LOLA terrain on the south polar cap (heights ×5), smooth sphere elsewhere · drag to rotate, "
+    credit = ("NASA LOLA terrain on the south polar cap (heights ×3), smooth sphere elsewhere · drag to rotate, "
               "scroll to zoom")
 
 c1, c2 = st.columns([1, 4], vertical_alignment="center")

@@ -667,7 +667,7 @@ def sun_vector(lat_deg, lon_deg, az_deg, el_deg):
 def _globe_mesh(exag: float = GLOBE_EXAG):
     t = terrain3d()
     # smooth sphere for the rest of the Moon (no global terrain in this build)
-    la, lo = np.meshgrid(np.linspace(-61, 90, 76), np.linspace(0, 360, 121), indexing="ij")
+    la, lo = np.meshgrid(np.linspace(-70, 90, 81), np.linspace(0, 360, 121), indexing="ij")
     sphere = _latlon_xyz(la, lo, R_MOON_KM - 0.5)
     # LOLA 60°S cap (7.7 km cells), with a hole where the finer site region goes
     cap = t["cap"].astype(float)
@@ -678,7 +678,7 @@ def _globe_mesh(exag: float = GLOBE_EXAG):
     XX, YY = np.meshgrid(X, Y)
     rx0, ry0, rcell = t["region_ul"] / 1000.0
     rn = t["region"].shape[0]
-    inside = (XX > rx0 + cell) & (XX < rx0 + rn * rcell - cell) & (YY < ry0 - cell) & (YY > ry0 - rn * rcell + cell)
+    inside = (XX > rx0 + 4 * cell) & (XX < rx0 + rn * rcell - 4 * cell) & (YY < ry0 - 4 * cell) & (YY > ry0 - rn * rcell + 4 * cell)
     capm = np.where((np.hypot(XX, YY) > 2 * R_MOON_KM * np.tan(np.radians(15.0))) | inside, np.nan, cap)
     capxyz = _polar_xyz(XX, YY, capm, exag)
     # finer site region (~2.9 km cells)
