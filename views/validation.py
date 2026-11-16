@@ -16,7 +16,7 @@ import ui_common as ui
 ui.setup_page()
 ui.help_button()
 ui.banner("verified", "Data Validation",
-          "What each check covers, what it does not, and where every input comes from.")
+          "How the results were checked, and where every piece of data comes from.")
 names = ui.names()
 sites = ui.sites_df()
 v = ui.validation_report()
@@ -43,30 +43,41 @@ n_pass = sum(c["pass"] for c in checks)
 n_real = sum(ui.terrain_status(s) == "real" for s in sites.site_id)
 
 # ------------------------------------------------------------------ summary
-st.markdown(f'<div class="lln-sec">{ui.mi("verified")}Validation summary</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="lln-sec">{ui.mi("verified")}How we checked the results</div>', unsafe_allow_html=True)
+
+
+def tip(t):
+    return f'<span class="lln-help" data-tip="{t}">?</span>'
+
+
 k = st.columns(4)
 if v:
     n_samples = sum(r["n"] for b in v["sites"].values() for r in b.values())
-    k[0].markdown(ui.kcard("public", "Sun & Earth positions vs JPL Horizons", f"{v['overall_max_error_deg']:.5f}° max",
-                           f"{n_samples} comparisons at {len(v['sites'])} sites · positions only", ui.BOTH),
-                  unsafe_allow_html=True)
+    k[0].markdown(ui.kcard("public", "Sun &amp; Earth positions" + tip(
+        "We compared our Sun and Earth positions with NASA JPL Horizons, the official reference. The largest "
+        "difference is tiny. This checks positions only, not terrain, power or communication."),
+        f"{v['overall_max_error_deg']:.5f}°", f"max error vs NASA JPL Horizons · {n_samples} checks", ui.BOTH),
+        unsafe_allow_html=True)
 else:
-    k[0].markdown(ui.kcard("public", "Positions vs JPL Horizons", "Not run", "run scripts/validate_horizons.py",
+    k[0].markdown(ui.kcard("public", "Sun &amp; Earth positions", "Not run", "run scripts/validate_horizons.py",
                            ui.GREY), unsafe_allow_html=True)
-k[1].markdown(ui.kcard("science", "Physics checks (live)", f"{n_pass} of {len(checks)} pass",
-                       "Sun-elevation bounds, two known total eclipses", ui.BOTH if n_pass == len(checks) else ui.SUN),
-              unsafe_allow_html=True)
-k[2].markdown(ui.kcard("terrain", "Terrain horizons", f"{n_real} of {len(sites)} on LOLA",
-                       "Orientation unit-tested; not compared with an independent horizon dataset", ui.SUN),
-              unsafe_allow_html=True)
-k[3].markdown(ui.kcard("database", "Data coverage", "8 of 9 regions",
-                       "Artemis III candidate regions; Mons Mouton Plateau grid unavailable", ui.TEAL),
-              unsafe_allow_html=True)
-st.caption("Scope: the JPL Horizons comparison validates celestial positions only. It does not validate terrain "
-           "horizons, communication or power. 34 automated tests (tests/, run with pytest) passed at the last build.")
+k[1].markdown(ui.kcard("science", "Physics checks" + tip(
+    "Simple tests the results must pass: the Sun never rises higher than physics allows at each site, and two "
+    "known total lunar eclipses are found on the right dates."),
+    f"{n_pass} of {len(checks)} pass", "Sun height limits · known eclipses", ui.BOTH if n_pass == len(checks) else ui.SUN),
+    unsafe_allow_html=True)
+k[2].markdown(ui.kcard("terrain", "Terrain" + tip(
+    "Every site uses real NASA LOLA laser-altimeter terrain. Its direction handling is tested in code, but it "
+    "was not compared with a second, independent terrain source."),
+    f"{n_real} of {len(sites)} sites", "real NASA LOLA terrain", ui.SUN), unsafe_allow_html=True)
+k[3].markdown(ui.kcard("database", "Sites covered" + tip(
+    "NASA named 9 Artemis III candidate regions. We cover 8; the USGS map for Mons Mouton Plateau could not be "
+    "downloaded during the event."),
+    "8 of 9 regions", "NASA Artemis III candidates", ui.TEAL), unsafe_allow_html=True)
+st.caption("34 automated tests pass. Open a section below for the full details.")
 
 # ------------------------------------------------------------------ detail sections
-with st.expander("1 · JPL Horizons comparison (positions only)", icon=":material/public:"):
+with st.expander("Sun and Earth positions vs NASA JPL Horizons", icon=":material/public:"):
     if v:
         rows = [{"site": names.get(sid, sid), "body": body, "samples": r["n"],
                  "max |ΔEl| (°)": r["max_abs_del_deg"], "median |ΔEl| (°)": r["median_abs_del_deg"],
@@ -78,13 +89,13 @@ with st.expander("1 · JPL Horizons comparison (positions only)", icon=":materia
     else:
         st.warning("Not yet run. Run `python scripts/validate_horizons.py` (needs internet).")
 
-with st.expander("2 · Physics checks and unit tests", icon=":material/science:"):
+with st.expander("Physics checks and automated tests", icon=":material/science:"):
     st.dataframe(pd.DataFrame(checks), width="stretch", hide_index=True)
     st.caption("Unit tests (tests/) cover terrain orientation with synthetic mountains at known bearings from several "
                "longitudes, eclipse geometry, the battery model against a hand calculation, score-weight "
                "normalisation and DSN gating.")
 
-with st.expander("3 · Terrain horizons and site points", icon=":material/terrain:"):
+with st.expander("Terrain and site locations", icon=":material/terrain:"):
     trows = []
     for _, s in sites.iterrows():
         hp = ui.horizon(s.site_id)
@@ -99,7 +110,7 @@ with st.expander("3 · Terrain horizons and site points", icon=":material/terrai
                "along local geographic bearings. Missing terrain is flagged; results it could change are "
                "'uncertain' and excluded from confident rankings.")
 
-with st.expander("4 · Data sources and assumptions", icon=":material/database:"):
+with st.expander("Data sources and assumptions", icon=":material/database:"):
     st.markdown("""
 | Data | Source | Used for |
 |---|---|---|
@@ -118,7 +129,7 @@ with st.expander("4 · Data sources and assumptions", icon=":material/database:"
 - Best Date Finder scans hourly data; the Mission Dashboard recomputes at 10 minutes.
 """)
 
-with st.expander("5 · Limitations and AI disclosure", icon=":material/rule:"):
+with st.expander("Limitations and use of AI", icon=":material/rule:"):
     st.markdown(f"**Limitations.** {ui.LIMITATIONS} DSN results are line-of-sight geometry, not scheduled antenna "
                 "time or a link budget.")
     st.markdown("**Use of AI.** We used an AI assistant (Claude, Anthropic) to draft the engine code, tests, data "
