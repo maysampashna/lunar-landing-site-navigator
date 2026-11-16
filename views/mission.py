@@ -247,12 +247,16 @@ col_map, col_clock = st.columns([1.45, 1], gap="medium")
 with col_map:
     with st.container(key="card_map"):
         v_, c_ = st.columns([0.7, 1.6], vertical_alignment="center")
-        view = v_.segmented_control("View", ["2D", "3D"], default="2D", label_visibility="collapsed") or "2D"
+        view = v_.segmented_control("View", ["2D", "3D Moon"], default="2D", label_visibility="collapsed") or "2D"
         color_by = c_.segmented_control("Colour", ["At selected time", "Mission rating"], default="At selected time",
                                         label_visibility="collapsed")
         stat_ = status if color_by != "Mission rating" else None
-        if view == "3D" and ui.terrain3d() is not None:
-            st.plotly_chart(ui.region_3d(chosen, status=stat_, scores=worst.to_dict(), highlight=focus),
+        if view == "3D Moon" and ui.terrain3d() is not None:
+            gview = st.segmented_control("Globe view", ["Focus site", "All sites", "Whole Moon"], default="All sites",
+                                         label_visibility="collapsed") or "All sites"
+            sun = ui.sun_vector(srows.loc[focus, "lat_deg"], srows.loc[focus, "lon_deg"], f0.sun_az_deg, f0.sun_el_deg)
+            st.plotly_chart(ui.moon_globe(chosen, sun_vec=sun, status=stat_, scores=worst.to_dict(), highlight=focus,
+                                          view=gview, height=440),
                             width="stretch", config={"displaylogo": False, "scrollZoom": True,
                                                      "modeBarButtonsToRemove": ["toImage"]})
         else:
@@ -264,7 +268,7 @@ with col_map:
                            [("Excellent", "≥90", "#3DDC97"), ("Good", "70–89", "#4C8DFF"),
                             ("Fair", "40–69", "#FFB02E"), ("Poor", "<40", "#FF6B8B")]))
         st.markdown(legend + '<div style="color:#8FA4B0;font-size:0.8rem;margin-top:4px">'
-                    + ("Drag to rotate, scroll to zoom · NASA LOLA relief, heights ×4" if view == "3D" else
+                    + ("Drag to rotate, scroll to zoom · lit by the Sun at the selected time · LOLA terrain on the polar cap (×5)" if view == "3D Moon" else
                        "Click a site to show it in 3D · drag to move, +/− to zoom") + '</div>', unsafe_allow_html=True)
 
 with col_clock:

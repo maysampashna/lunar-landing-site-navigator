@@ -48,3 +48,10 @@ for s in sites:
     out[f"wxy_{s['site_id']}"] = np.array([x, y, X0 + b * PX, Y0 - a * PX])
 out["wmeta"] = np.array([HALF, F * PX])
 np.savez_compressed("_github_upload/data/terrain3d.npz", **out)
+
+# coarse 60S polar cap for the whole-Moon globe (7.68 km cells; keys cap, cap_ul)
+cap_dem = tifffile.imread("data/raw/LDEM_60S_240MPP_ADJ.TIF")          # 240 m pixels, UL corner (-931200, 931200)
+out = dict(np.load("_github_upload/data/terrain3d.npz"))
+out["cap"] = np.round(np.nan_to_num(block(cap_dem, 32), nan=0)).astype(np.int16)
+out["cap_ul"] = np.array([-931200.0, 931200.0, 240.0 * 32])
+np.savez_compressed("_github_upload/data/terrain3d.npz", **out)

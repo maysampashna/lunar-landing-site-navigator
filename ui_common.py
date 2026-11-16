@@ -633,3 +633,103 @@ def site_vis_hourly(sid: str, thr: float = 0.5, mask: float = 0.0, req: bool = T
     p = visibility.VisParams(sunlit_threshold=thr, earth_mask_deg=mask, require_dsn=req)
     dsn_any = dsn_all_hourly()["dsn_any"].to_numpy() if req and live.kernels_available() else None
     return visibility.compute(ephem(sid), horizon(sid), p, dsn_any=dsn_any)
+
+
+# ------------------------------------------------------------------ whole-Moon globe with real polar terrain
+GLOBE_EXAG = 5.0
+
+
+def _polar_xyz(xkm, ykm, h_m, exag):
+    """Polar-stereographic map km + height (m) → Moon-fixed x, y, z (km); z = north."""
+    rho = np.hypot(xkm, ykm)
+    lat = np.radians(-90.0 + 2.0 * np.degrees(np.arctan(rho / (2 * R_MOON_KM))))
+    lon = np.arctan2(xkm, ykm)
+    r = R_MOON_KM + h_m / 1000.0 * exag
+    return r * np.cos(lat) * np.cos(lon), r * np.cos(lat) * np.sin(lon), r * np.sin(lat)
+
+
+def _latlon_xyz(lat_deg, lon_deg, r):
+    la, lo = np.radians(lat_deg), np.radians(lon_deg)
+    return r * np.cos(la) * np.cos(lo), r * np.cos(la) * np.sin(lo), r * np.sin(la)
+
+
+def sun_vector(lat_deg, lon_deg, az_deg, el_deg):
+    """Unit vector toward the Sun in the Moon-fixed frame, from a site's local azimuth/elevation."""
+    la, lo, a, e = map(np.radians, (lat_deg, lon_deg, az_deg, el_deg))
+    E = np.array([-np.sin(lo), np.cos(lo), 0.0])
+    N = np.array([-np.sin(la) * np.cos(lo), -np.sin(la) * np.sin(lo), np.cos(la)])
+    U = np.array([np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)])
+    v = np.cos(e) * np.sin(a) * E + np.cos(e) * np.cos(a) * N + np.sin(e) * U
+    return v / np.linalg.norm(v)
+
+
+@st.cache_resource
+def _globe_mesh(exag: float = GLOBE_EXAG):
+    t = terrain3d()
+    # smooth sphere for the rest of the Moon (no global terrain in this build)
+    la, lo = np.meshgrid(np.linspace(-61, 90, 76), np.linspace(0, 360, 121), indexing="ij")
+    sphere = _latlon_xyz(la, lo, R_MOON_KM - 0.5)
+    # LOLA 60°S cap (7.7 km cells), with a hole where the finer site region goes
+    cap = t["cap"].astype(float)
+    ulx, uly, cell = t["cap_ul"] / 1000.0
+    n = cap.shape[0]
+    X = ulx + (np.arange(n) + 0.5) * cell
+    Y = uly - (np.arange(n) + 0.5) * cell
+    XX, YY = np.meshgrid(X, Y)
+    rx0, ry0, rcell = t["region_ul"] / 1000.0
+    rn = t["region"].shape[0]
+    inside = (XX > rx0 + cell) & (XX < rx0 + rn * rcell - cell) & (YY < ry0 - cell) & (YY > ry0 - rn * rcell + cell)
+    capm = np.where((np.hypot(XX, YY) > 2 * R_MOON_KM * np.tan(np.radians(15.0))) | inside, np.nan, cap)
+    capxyz = _polar_xyz(XX, YY, capm, exag)
+    # finer site region (~2.9 km cells)
+    reg = t["region"].astype(float)[::3, ::3]
+    RX = rx0 + (np.arange(reg.shape[1]) * 3 + 1.5) * rcell
+    RY = ry0 - (np.arange(reg.shape[0]) * 3 + 1.5) * rcell
+    RXX, RYY = np.meshgrid(RX, RY)
+    regxyz = _polar_xyz(RXX, RYY, reg, exag)
+    rnd = lambda a: tuple(np.round(v, 2) for v in a)                 # noqa: E731
+    return rnd(sphere), rnd(capxyz), rnd(regxyz)
+
+
+def moon_globe(site_ids, sun_vec=None, status: dict | None = None, scores: dict | None = None,
+               highlight: str | None = None, view: str = "All sites", height: int = 520):
+    """Rotatable whole-Moon globe: real LOLA terrain on the south polar cap (heights ×5), lit by the Sun."""
+    if terrain3d() is None or "cap" not in terrain3d():
+        return None
+    sphere, capxyz, regxyz = _globe_mesh()
+    sv = np.array([0.6, -0.6, -0.3]) if sun_vec is None else np.asarray(sun_vec)
+    light = dict(x=float(sv[0] * 1e5), y=float(sv[1] * 1e5), z=float(sv[2] * 1e5))
+    lit = dict(ambient=0.12, diffuse=0.95, specular=0.02, roughness=0.95, fresnel=0.0)
+    grey = [[0, "#9A9894"], [1, "#9A9894"]]
+    fig = go.Figure()
+    for (x, y, z) in (sphere, capxyz, regxyz):
+        fig.add_trace(go.Surface(x=x, y=y, z=z, surfacecolor=np.zeros_like(z), colorscale=grey, showscale=False,
+                                 hoverinfo="skip", lighting=lit, lightposition=light))
+    s = sites_df().set_index("site_id")
+    ids = [i for i in site_ids if i in s.index]
+    px_, py_, pz_ = _latlon_xyz(s.loc[ids, "lat_deg"].values, s.loc[ids, "lon_deg"].values,
+                                R_MOON_KM + s.loc[ids, "height_m"].astype(float).values / 1000 * GLOBE_EXAG + 14)
+    cols = [STATUS[status[i]][1] if status and i in status else rating(scores[i])[1] if scores and i in scores
+            else site_color(i) for i in ids]
+    fig.add_trace(go.Scatter3d(x=px_, y=py_, z=pz_, mode="markers+text", text=[f"<b>{s.loc[i, 'name']}</b>" for i in ids],
+                               textposition="top center", hoverinfo="skip",
+                               textfont=dict(color=[AMBER if i == highlight else "white" for i in ids], size=12),
+                               marker=dict(size=[8 if i == highlight else 5 for i in ids], color=cols, symbol="diamond",
+                                           line=dict(color="white", width=1.5))))
+    L = 1.08 * R_MOON_KM
+    pole = np.array([0.0, 0.0, -R_MOON_KM]) / L * 0.5      # plotly camera units span half the axis range
+    if view == "Whole Moon":
+        center, eye = np.zeros(3), np.array([0.9, -1.3, -1.1])
+    elif view == "Focus site" and highlight in s.index:
+        c = np.array(_latlon_xyz(s.loc[highlight, "lat_deg"], s.loc[highlight, "lon_deg"], R_MOON_KM)) / L * 0.5
+        center, eye = c, c + np.array([0.0, -0.03, -0.04])
+    else:                                                            # "All sites"
+        center, eye = pole, pole + np.array([0.0, -0.13, -0.17])
+    ax = dict(visible=False, range=[-L, L])
+    fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
+                      showlegend=False, uirevision=f"globe-{view}-{highlight}",
+                      scene=dict(bgcolor="rgba(0,0,0,0)", aspectmode="cube", xaxis=ax, yaxis=ax, zaxis=ax,
+                                 camera=dict(center=dict(zip("xyz", map(float, center))),
+                                             eye=dict(zip("xyz", map(float, eye))),
+                                             up=dict(x=0, y=0, z=1))))
+    return fig

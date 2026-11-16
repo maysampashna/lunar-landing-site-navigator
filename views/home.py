@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import streamlit as st
 
+from engine import live, visibility
 import ui_common as ui
 
 ui.setup_page()
@@ -44,12 +45,20 @@ with left:
                 '(power) and Earth (communication) are above the real terrain horizon — computed from NASA data.'
                 f'</div>{ui.validated_pill()}', unsafe_allow_html=True)
 with right:
-    fig = ui.region_3d(list(names), height=470)
+    view = st.segmented_control("Globe view", ["All sites", "Whole Moon"], default="All sites",
+                                label_visibility="collapsed") or "All sites"
+    sun = None
+    if live.kernels_available():                     # light the Moon by the real Sun at the selected landing time
+        site = st.session_state["m_site"]
+        r = ui.sites_df().set_index("site_id").loc[site]
+        row = live.at_time(r, ui.horizon(site), ui.mission_start(), visibility.VisParams())
+        sun = ui.sun_vector(r.lat_deg, r.lon_deg, row.sun_az_deg, row.sun_el_deg)
+    fig = ui.moon_globe(list(names), sun_vec=sun, view=view, height=480)
     if fig is not None:
-        st.plotly_chart(fig, width="stretch", config={"displaylogo": False, "scrollZoom": False,
+        st.plotly_chart(fig, width="stretch", config={"displaylogo": False, "scrollZoom": True,
                                                       "modeBarButtonsToRemove": ["toImage"]})
-        st.caption("The lunar south pole from NASA LOLA laser altimetry (heights ×4) with the candidate sites. "
-                   "Drag to rotate.")
+        st.caption("The Moon lit by the Sun on the selected landing date. The south polar cap shows NASA LOLA laser-"
+                   "altimetry terrain (heights ×5); the rest is a smooth sphere. Drag to rotate, scroll to zoom.")
 
 st.write("")
 cards = [
