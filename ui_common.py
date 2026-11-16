@@ -717,17 +717,20 @@ def moon_globe(site_ids, sun_vec=None, status: dict | None = None, scores: dict 
                                marker=dict(size=[8 if i == highlight else 5 for i in ids], color=cols, symbol="diamond",
                                            line=dict(color="white", width=1.5))))
     L = 1.08 * R_MOON_KM
-    pole = np.array([0.0, 0.0, -R_MOON_KM]) / L * 0.5      # plotly camera units span half the axis range
-    # Cameras look at the south pole from outside the Moon with 0° longitude at the top of the screen and 90°E
-    # on the right — the same orientation as the 2D map — tilted from the 180° side for a 3D feel.
+    # The camera always aims at the Moon's centre, so dragging turns the globe around its own centre (like a real
+    # globe). Close views sit above the stations with 0° longitude up and 90°E right, as on the 2D map.
+    # Plotly camera units: the axis range [-L, L] maps to [-0.5, 0.5].
     up = dict(x=1, y=0, z=0)
+    center = np.zeros(3)
+    units = np.array(_latlon_xyz(s.loc[ids, "lat_deg"].values, s.loc[ids, "lon_deg"].values, 1.0)).T
     if view == "Whole Moon":
-        center, eye, up = np.zeros(3), np.array([1.55, -0.35, -0.9]), dict(x=0, y=0, z=1)   # north up
+        eye, up = np.array([1.55, -0.35, -0.9]), dict(x=0, y=0, z=1)                    # north up
     elif view == "Focus site" and highlight in s.index:
-        c = np.array(_latlon_xyz(s.loc[highlight, "lat_deg"], s.loc[highlight, "lon_deg"], R_MOON_KM)) / L * 0.5
-        center, eye = c, c + np.array([-0.035, 0.0, -0.05])
-    else:                                                            # "All sites"
-        center, eye = pole, pole + np.array([-0.11, 0.0, -0.19])
+        d = np.array(_latlon_xyz(s.loc[highlight, "lat_deg"], s.loc[highlight, "lon_deg"], 1.0))
+        eye = d / np.linalg.norm(d) * 0.6
+    else:                                                                              # "All sites"
+        d = units.mean(axis=0)
+        eye = d / np.linalg.norm(d) * 0.74
     ax = dict(visible=False, range=[-L, L])
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                       showlegend=False, uirevision=f"globe-{view}-{highlight}",
