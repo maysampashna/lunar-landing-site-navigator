@@ -8,12 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import json
 
-import pandas as pd
 import streamlit as st
 
-from engine import finder
-from engine.metrics import ScoreWeights
-from engine.power import PowerParams
 import ui_common as ui
 
 ui.setup_page()
@@ -23,53 +19,30 @@ stars = ui._data_uri(ROOT / "assets" / "stars.jpg", "image/jpeg")
 names = ui.names()
 srow = ui.sites_df().set_index("site_id")
 
-# what each site is (from its NASA region name and our LOLA terrain data)
+# what each site is, and why its region is a candidate (NASA gave one shared rationale for all nine regions)
 ABOUT = {
-    "peak_near_cabeus_b": "A high peak near Cabeus B crater, close to Cabeus, where NASA's LCROSS impact in 2009 "
-                          "found water.",
-    "haworth": "Next to Haworth crater, one of the large permanently shadowed craters near the pole.",
-    "malapert_massif": "A large mountain massif, among the highest ground near the south pole.",
-    "mons_mouton": "A broad, flat-topped mountain named after NASA mathematician Melba Mouton.",
-    "nobile_rim_1": "On the rim of Nobile crater, a large crater in the polar region.",
-    "nobile_rim_2": "On the rim of Nobile crater, a large crater in the polar region.",
-    "de_gerlache_rim_2": "On the rim of de Gerlache crater, beside Shackleton crater near the pole.",
-    "slater_plain": "A smoother plain near Slater crater.",
+    "peak_near_cabeus_b": "A high peak beside Cabeus B crater, close to Cabeus crater, where NASA's LCROSS impact "
+                          "in 2009 detected water.",
+    "haworth": "A site on the edge of Haworth crater, one of the large, permanently shadowed craters near the "
+               "south pole.",
+    "malapert_massif": "A broad mountain massif that rises among the highest ground near the south pole.",
+    "mons_mouton": "A wide, flat-topped mountain named in honour of NASA mathematician Melba Mouton.",
+    "nobile_rim_1": "A site on the rim of Nobile, a large crater in the south polar region.",
+    "nobile_rim_2": "A second site on the rim of Nobile crater, on a different stretch of the rim.",
+    "de_gerlache_rim_2": "A site on the rim of de Gerlache crater, right next to Shackleton crater and the pole.",
+    "slater_plain": "A comparatively smooth plain near Slater crater.",
 }
-WHY = ("Why chosen: one of NASA's nine Artemis III candidate regions (Oct 2024), picked from Lunar Reconnaissance "
-       "Orbiter data for diverse geology, access to cold shadowed areas that may hold water ice, and flexible "
-       "mission timing.")
-
-
-@st.cache_data(show_spinner="Scoring the sites…")
-def quick_scores(start, dur):
-    ids = list(names)
-    vis = {s_: ui.site_vis_hourly(s_) for s_ in ids}
-    table, _ = finder.shift_compare(vis, start, duration_h=dur * 24, shifts_h=(0, 24, 48), weights=ScoreWeights(),
-                                    power=PowerParams(), terrain_real={s_: ui.terrain_status(s_) == "real" for s_ in ids})
-    return table[table.shift_h == 0].set_index("site_id")
-
-
-start = ui.mission_start()
-dur = float(st.session_state["m_dur"])
-try:
-    sc = quick_scores(start, dur)
-except Exception:                                    # keep Home usable even if scoring is unavailable
-    sc = None
+WHY = ("NASA selected this region as one of nine Artemis III candidates in October 2024, using data from the Lunar "
+       "Reconnaissance Orbiter. The regions offer diverse geology, some of the Moon's oldest terrain, nearby cold "
+       "shadowed areas that may hold water ice, and flexible timing for the mission.")
 
 
 def tip(sid):
     h = srow.loc[sid, "height_m"] / 1000.0
-    ours = ""
-    if sc is not None and sid in sc.index:
-        r = sc.loc[sid]
-        ours = (f'<div class="tl">Our analysis · {dur:g}-day stay from {start:%Y-%m-%d}</div>'
-                f'<div class="tm">Sunlight <b>{r.pct_sunlit:.0f}%</b> · Earth contact <b>{r.pct_dte:.0f}%</b> · '
-                f'worst-case score <b>{r.worst_case_score:.0f}</b>/100</div>')
     return (f'<div class="tip"><div class="tn">{names[sid]}</div>'
-            f'<div class="tx">{ABOUT.get(sid, "")} Elevation {h:+.1f} km (LOLA).</div>'
-            f'<div class="tx why">{WHY}</div>{ours}'
-            '<div class="tf">Point = representative location inside the USGS region grid, not an official '
-            'landing spot.</div></div>')
+            f'<div class="tx">{ABOUT.get(sid, "")} Elevation {h:+.1f} km.</div>'
+            f'<div class="tx why">{WHY}</div>'
+            '<div class="tf">Shown at a representative point inside the official region.</div></div>')
 
 
 hot = json.loads((ROOT / "assets" / "home_moon_labels.json").read_text())
