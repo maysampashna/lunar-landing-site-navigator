@@ -33,19 +33,20 @@ ui.banner("space_dashboard", "Mission Dashboard",
 # ================================================================== the single control panel (horizontal)
 with st.container(key="card_ctl"):
     ui.card_title("tune", "Mission controls")
-    c = st.columns([2.7, 1.35, 1.05, 0.6, 1.3], vertical_alignment="bottom")
-    chosen = c[0].multiselect("Candidate sites", list(names), format_func=names.get, key="m_sites")
+    chosen = st.pills("Candidate sites", list(names), selection_mode="multi", format_func=names.get, key="m_sites")
     if not chosen:
         st.info("Pick at least one site.")
         st.stop()
-    focus = c[1].selectbox("Site shown in 3D", chosen, format_func=names.get, key="m_site")
-    c[2].date_input("Landing (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
+    chosen = [x for x in names if x in chosen]                         # stable, map order
+    c = st.columns([1.5, 1.1, 0.6, 1.5, 1.0], vertical_alignment="bottom")
+    focus = c[0].selectbox("Site shown in 3D", chosen, format_func=names.get, key="m_site")
+    c[1].date_input("Landing (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
                     max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
-    c[3].number_input("Hour", 0, 23, key="m_hour")
-    dur_days = c[4].slider("Surface stay (days)", 1.0, 14.0, step=0.5, key="m_dur")
-    r2 = st.columns([3.6, 1.4], vertical_alignment="top")
-    time_slot = r2[0].container()
-    with r2[1].expander("Advanced settings", icon=":material/settings:"):
+    c[2].number_input("Hour", 0, 23, key="m_hour")
+    dur_days = c[3].slider("Surface stay (days)", 1.0, 14.0, step=0.5, key="m_dur")
+    adv = c[4].popover("Advanced", icon=":material/settings:", width="stretch")
+    time_slot = st.container()
+    with adv:
         require_dsn = st.toggle("Require a DSN complex to see the Moon", True)
         dsn_mask = st.slider("DSN elevation mask (°)", 0.0, 20.0, 10.0, 1.0)
         mask = st.slider("Earth clearance above terrain (°)", 0.0, 10.0, 0.0, 0.5)
@@ -247,17 +248,6 @@ with col_clock:
         st.markdown(f'<div class="lln-clock">{ui.doy(t_sel)}</div><div class="lln-clock-sub">Selected time · '
                     f'MET {ui.met(t_sel, start)}<br>Houston {t_sel.tz_convert("America/Chicago"):%H:%M %Z} · '
                     f'Actual now: {now_real:%Y-%j}T{now_real:%H:%M}Z</div>', unsafe_allow_html=True)
-        r0 = f0
-        n_earth = sum(bool(r.earth_in_view) for r in now_state.values())
-        dsn_up = bool(r0.dsn_any)
-        st.markdown(
-            '<div style="display:flex;gap:10px;margin:10px 0 6px 0">'
-            + ui.kcard("cell_tower", "DSN geometry", "Moon in view" if dsn_up else "No complex",
-                       f"{r0.dsn_best} · Moon {r0.dsn_best_el:.0f}°" if dsn_up else "Moon below every mask",
-                       ui.EARTH if dsn_up else ui.GREY, small=True)
-            + ui.kcard("public", "Earth visible", f"{n_earth} / {len(chosen)} sites", "above terrain",
-                       ui.EARTH if n_earth else ui.GREY, small=True)
-            + "</div>", unsafe_allow_html=True)
         events = []
         for sid in chosen:
             for t_, lab_ in next_events_for(sid, t_sel):
