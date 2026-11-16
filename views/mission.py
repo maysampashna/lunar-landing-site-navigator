@@ -64,17 +64,30 @@ with st.container(key="card_ctl"):
             st.markdown(f'<div class="lln-ct" style="font-size:0.98rem;margin:6px 0 2px 0;border-bottom:1px solid '
                         f'#1C3A4A;padding-bottom:4px">{ui.mi(icon, 20)}<span>{title}</span></div>',
                         unsafe_allow_html=True)
+        st.markdown('<div style="background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.35);'
+                    'border-radius:10px;padding:10px 12px;font-size:0.86rem;color:#DCE9EF;line-height:1.45">'
+                    '<b style="color:#7FF0DD">Why these settings?</b> The defaults describe a typical small lander '
+                    'and are fine for most comparisons. Change them only to ask <i>"what if?"</i> — for a different '
+                    'spacecraft, a stricter mission rule, or different priorities — and watch the ranking update. '
+                    'Hover the <b>?</b> next to any setting for details.</div>', unsafe_allow_html=True)
+
+        def when(text):
+            st.markdown(f'<div style="color:#8FA4B0;font-size:0.8rem;margin:-2px 0 4px 0">When to change: {text}</div>',
+                        unsafe_allow_html=True)
         grp("cell_tower", "Communication (Earth contact)")
+        when("your mission has its own rules for when Earth contact counts, or uses a relay instead of the DSN.")
         require_dsn = st.toggle("Require a NASA DSN antenna to see the Moon", True, help="On: Earth contact also needs one of NASA's Deep Space Network dishes (California, Spain, Australia) to see the Moon. Off: Earth above the hills is enough.")
         dsn_mask = st.slider("DSN minimum elevation (°)", 0.0, 20.0, 10.0, 1.0, help="How high the Moon must be in the sky at a DSN dish before it can be used. 10° is a typical value.")
         mask = st.slider("Earth clearance above terrain (°)", 0.0, 10.0, 0.0, 0.5, help="Extra safety margin: how far Earth must rise above the hills before contact counts. 0 = just above the skyline.")
         grp("wb_sunny", "Power (sunlight and battery)")
+        when("your lander has different solar panels or uses more or less power — this changes the battery needed.")
         thr = st.slider("Sunlit when this fraction of the Sun's disc is visible", 0.05, 1.0, 0.5, 0.05, help="The Sun often peeks over the hills. 0.5 = the site counts as sunlit when at least half of the Sun is visible.")
         p1, p2 = st.columns(2)
         area = p1.number_input("Solar array (m²)", 1.0, 200.0, 10.0, help="Size of the solar panels. Used only for the battery estimate.")
         eff = p2.slider("Array efficiency", 0.1, 0.4, 0.30, help="Share of sunlight the panels turn into electricity (0.30 = 30 %).")
         load = st.number_input("Constant power load (W)", 50.0, 20000.0, 1000.0, 50.0, help="Power the lander uses all the time. Sets how big the battery must be to get through dark periods.")
         grp("leaderboard", "Ranking")
+        when("your mission cares more about power than communication (or the reverse), or expects longer delays.")
         extra = st.multiselect("Landing-delay scenarios (h)", [24, 48, 72], default=[24, 48], help="Landings often slip. The tool re-checks each site as if landing 24 or 48 hours late; Score if delayed is the worst of these.")
         w = ui.weights_sidebar(expander=False)
 
