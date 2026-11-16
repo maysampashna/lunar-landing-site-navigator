@@ -33,7 +33,20 @@ ui.banner("space_dashboard", "Mission Dashboard",
 # ================================================================== the single control panel (horizontal)
 with st.container(key="card_ctl"):
     ui.card_title("tune", "Mission controls")
-    chosen = st.pills("Candidate sites", list(names), selection_mode="multi", format_func=names.get, key="m_sites")
+    st.markdown("""<style>
+.st-key-sites_box {background:rgba(45,212,191,0.06); border:1px solid rgba(45,212,191,0.35); border-radius:12px;
+   padding:10px 14px 12px 14px !important;}
+.st-key-sites_box [data-testid="stWidgetLabel"] p {color:#7FF0DD; font-weight:700; font-size:0.9rem;}
+.st-key-sites_box button[aria-pressed="false"] {background:rgba(255,255,255,0.03) !important; border:1px solid #2A4555 !important;}
+.st-key-sites_box button[aria-pressed="false"] * {color:#9FB4C0 !important;}
+.st-key-sites_box button[aria-pressed="false"]:hover {border-color:#2DD4BF; color:#E6F1F5;}
+.st-key-sites_box button[aria-pressed="true"] {background:#2DD4BF !important; border:1px solid #2DD4BF !important; color:#04161F;
+   font-weight:700; box-shadow:0 0 10px rgba(45,212,191,0.45);}
+.st-key-sites_box button[aria-pressed="true"] * {color:#04161F !important; font-weight:700;}
+</style>""", unsafe_allow_html=True)
+    with st.container(key="sites_box"):
+        chosen = st.pills("Candidate sites  ·  click to add or remove", list(names), selection_mode="multi",
+                          format_func=names.get, key="m_sites")
     if not chosen:
         st.info("Pick at least one site.")
         st.stop()
