@@ -133,6 +133,8 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 .lln-ev .d {{width:9px; height:9px; border-radius:50%;}}
 .lln-ev .tm {{color:#E6F1F5; min-width:88px;}}
 .lln-ev .tg {{margin-left:auto; color:#7F95A2;}}
+.lln-help {{position:relative; display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; margin-left:8px; border-radius:50%; border:1px solid #2DD4BF; color:#2DD4BF; font-size:0.78rem; font-weight:700; cursor:help;}}
+.lln-help:hover::after {{content:attr(data-tip); position:absolute; top:calc(100% + 8px); left:-10px; z-index:60; width:320px; padding:10px 12px; border-radius:10px; background:#06182A; border:1px solid #2DD4BF; box-shadow:0 8px 24px rgba(0,0,0,0.55); color:#E6F1F5; font-size:0.85rem; font-weight:400; line-height:1.45; letter-spacing:0; text-transform:none; white-space:normal; pointer-events:none;}}
 .lln-sec {{display:flex; align-items:baseline; gap:10px; font-size:1.12rem; font-weight:700; margin:16px 0 8px 0; color:#F2F8FA;}}
 .lln-sec .material-symbols-outlined {{color:{TEAL};}}
 .lln-sec span.s {{color:#9FB4C0; font-weight:500; font-size:0.85rem;}}

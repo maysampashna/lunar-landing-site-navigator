@@ -233,7 +233,8 @@ with st.container():
                              ticktext=["N 0°", "NE", "E 90°", "SE", "S 180°", "SW", "W 270°", "NW", "N"], title=None)
             fig.update_yaxes(range=[ymin, ymax], title="Elevation (°)")
             fig = ui.style_fig(fig, 560)
-            fig.update_layout(plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=40, b=10),
+            fig.update_xaxes(fixedrange=True); fig.update_yaxes(fixedrange=True)
+            fig.update_layout(plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=40, b=10), dragmode=False,
                               legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
             st.caption("Full 360° skyline from LOLA terrain to 150 km (vertical scale exaggerated). Faint dots = paths "
@@ -266,11 +267,14 @@ with st.container():
                                          radialaxis=dict(range=[0, topr - ymin + 1], tickvals=[rr(e) for e in ticks],
                                                          ticktext=[f"{e}°" for e in ticks], gridcolor="#1E2742",
                                                          color="#7D879C", angle=90, tickfont=dict(size=9))))
-            st.plotly_chart(ui.style_fig(fig, 560), width="stretch", config={"displayModeBar": False})
+            fig = ui.style_fig(fig, 560)
+            fig.update_layout(dragmode=False)
+            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False, "scrollZoom": False,
+                                                          "doubleClick": False})
             st.caption("Looking straight up: elevation increases toward the centre; tracks fade light → dark over the stay.")
 
 # ================================================================== analysis, one section after another
-st.markdown(f'<div class="lln-sec">{ui.mi("timeline")}Visibility Timeline<span class="lln-tag">sunlight and Earth contact</span></div>',
+st.markdown(f'<div class="lln-sec">{ui.mi("timeline")}Visibility Timeline<span class="lln-tag">sunlight and Earth contact</span><span class="lln-help" data-tip="Each site has two bars over the stay: orange when the Sun is up (power), blue when Earth can be contacted. Gaps are the times without them. The dotted line is the selected time.">?</span></div>',
             unsafe_allow_html=True)
 with st.container(key="card_visibility"):
     segs = []
@@ -296,7 +300,7 @@ with st.container(key="card_visibility"):
                           legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
-st.markdown(f'<div class="lln-sec">{ui.mi("cell_tower")}DSN Geometry<span class="lln-tag">Goldstone · Madrid · Canberra</span></div>',
+st.markdown(f'<div class="lln-sec">{ui.mi("cell_tower")}DSN Geometry<span class="lln-tag">Goldstone · Madrid · Canberra</span><span class="lln-help" data-tip="How high the Moon is in the sky at NASA&#39;s three Deep Space Network sites (California, Spain, Australia). Above the dashed line, that site can see the Moon to talk to the lander.">?</span></div>',
             unsafe_allow_html=True)
 with st.container(key="card_dsn"):
     fig = go.Figure()
@@ -314,7 +318,7 @@ with st.container(key="card_dsn"):
     st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     st.caption("Moon elevation at Goldstone, Madrid and Canberra: potential geometric access, not scheduled antenna time.")
 
-st.markdown(f'<div class="lln-sec">{ui.mi("battery_charging_full")}Battery &amp; Power<span class="lln-tag">illustrative</span></div>',
+st.markdown(f'<div class="lln-sec">{ui.mi("battery_charging_full")}Battery &amp; Power<span class="lln-tag">illustrative</span><span class="lln-help" data-tip="Rough battery size each site needs to keep a 1 kW lander running through its dark periods. 0 kWh = never dark. A rough estimate, not a flight design.">?</span></div>',
             unsafe_allow_html=True)
 with st.container(key="card_battery"):
     kwh = [base.loc[s, "required_nameplate_kwh"] for s in order]
@@ -325,7 +329,7 @@ with st.container(key="card_battery"):
     st.caption(f"Illustrative: constant {load:.0f} W load, {area:g} m² Sun-tracking array at {eff:.0%}, 95 % "
                "charge/discharge efficiency, 80 % depth of discharge. Not a flight design.")
 
-st.markdown(f'<div class="lln-sec">{ui.mi("schedule")}Landing-Delay Risk<span class="lln-tag">score if the landing slips</span></div>',
+st.markdown(f'<div class="lln-sec">{ui.mi("schedule")}Landing-Delay Risk<span class="lln-tag">score if the landing slips</span><span class="lln-help" data-tip="How each site&#39;s score changes if the landing is 24 or 48 hours late. A flat line = a reliable site; a falling line = a site that only works on schedule.">?</span></div>',
             unsafe_allow_html=True)
 with st.container(key="card_delay"):
     fig = go.Figure()
