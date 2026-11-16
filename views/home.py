@@ -218,17 +218,18 @@ else:
         sx_, sy_ = pts @ right, pts @ up                              # screen-plane coordinates (km)
         order = np.argsort(sx_)                                        # left → right on screen
         n_ = len(order)
-        anns = []
+        anns, label_colors = [], []
         for rank, k in enumerate(order):
             sid = ids[k]
+            label_colors.append(ui.site_color(sid))
             ox = (rank - (n_ - 1) / 2) * 46
-            oy = 50 + 36 * [0, 2, 1, 3][rank % 4]
+            oy = 50 + 42 * [0, 2, 1, 3][rank % 4]
             anns.append(dict(
-                x=float(pts[k, 0]), y=float(pts[k, 1]), z=float(pts[k, 2]), text=f"<b>{names[sid]}</b>",
+                x=float(pts[k, 0]), y=float(pts[k, 1]), z=float(pts[k, 2]), text=f"<span style='color:{ui.site_color(sid)}'>●</span>  <b>{names[sid]}</b>",
                 showarrow=True, arrowcolor=ui.site_color(sid), arrowwidth=2, arrowhead=6, arrowsize=0.8,
                 startstandoff=0, standoff=4, ax=int(ox), ay=int(-oy),
-                bgcolor="rgba(4,18,32,0.90)", bordercolor=ui.site_color(sid), borderwidth=2, borderpad=7,
-                font=dict(color="#EAF7FC", size=13, family=ui.FONT),
+                bgcolor="rgba(6,20,36,0.82)", bordercolor=ui.site_color(sid), borderwidth=1.5, borderpad=8,
+                font=dict(color="#F2FAFD", size=13.5, family=ui.FONT),
                 hovertext=(f"<b>{names[sid]}</b><br>{wrap(ABOUT.get(sid, ''))} Elevation "
                            f"{srow.loc[sid, 'height_m']:+,.0f} m.<br><br>{wrap(WHY)}"),
                 hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor=ui.site_color(sid),
@@ -242,7 +243,7 @@ else:
                                      camera=dict(center=dict(zip("xyz", map(float, center + up * CAM["lift"]))),
                                                  eye=dict(zip("xyz", map(float, eye + up * CAM["lift"]))),
                                                  up=dict(zip("xyz", map(float, up))))))
-        return fig
+        return fig, label_colors
 
     rev = st.session_state.get("home_globe_rev", 0)
     with st.container(key="home_stage"):
@@ -250,7 +251,18 @@ else:
         if st.button("Reset view", icon=":material/restart_alt:", key="home_reset"):
             st.session_state["home_globe_rev"] = rev + 1
             st.rerun()
-        st.plotly_chart(home_globe(rev), width="stretch", key=f"home_globe_{rev}",
+        fig_g, label_colors = home_globe(rev)
+        css = "".join(
+            f'.st-key-home_stage .annotation-scene[data-index="{i_}"] rect.bg {{rx:11px; ry:11px; '
+            f'filter:drop-shadow(0 0 5px {c_}) drop-shadow(0 0 14px {c_}66); transition:filter .15s;}}'
+            f'.st-key-home_stage .annotation-scene[data-index="{i_}"]:hover rect.bg {{fill-opacity:0.98 !important; '
+            f'filter:drop-shadow(0 0 8px {c_}) drop-shadow(0 0 22px {c_});}}'
+            f'.st-key-home_stage .annotation-scene[data-index="{i_}"] .annotation-arrow-g path '
+            f'{{filter:drop-shadow(0 0 3px {c_});}}'
+            for i_, c_ in enumerate(label_colors))
+        st.markdown(f"<style>{css}.st-key-home_stage .annotation-text {{letter-spacing:0.02em;}}</style>",
+                    unsafe_allow_html=True)
+        st.plotly_chart(fig_g, width="stretch", key=f"home_globe_{rev}",
                         config={"displayModeBar": False, "scrollZoom": True})
         st.markdown('<div class="lln-ov bot">' + BUTTONS + '</div>', unsafe_allow_html=True)
 
