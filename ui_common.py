@@ -325,16 +325,15 @@ def weights_sidebar(expander: bool = True) -> ScoreWeights:
     import contextlib
     ctx = st.expander("⚖️ Score weights (your preferences)") if expander else contextlib.nullcontext()
     with ctx:
-        w = ScoreWeights(st.slider("Weight: power (sunlight)", 0.0, 1.0, DEFAULT_WEIGHTS.w_sun),
-                         st.slider("Weight: communication", 0.0, 1.0, DEFAULT_WEIGHTS.w_dte),
-                         st.slider("Weight: both at once", 0.0, 1.0, DEFAULT_WEIGHTS.w_both),
-                         st.slider("Penalty: longest dark gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dark),
-                         st.slider("Penalty: longest no-comm gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dte))
+        w = ScoreWeights(st.slider("Importance: sunlight", 0.0, 1.0, DEFAULT_WEIGHTS.w_sun),
+                         st.slider("Importance: Earth contact", 0.0, 1.0, DEFAULT_WEIGHTS.w_dte),
+                         st.slider("Importance: both at once", 0.0, 1.0, DEFAULT_WEIGHTS.w_both),
+                         st.slider("Penalty: longest dark period", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dark),
+                         st.slider("Penalty: longest Earth gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dte))
         if not w.is_valid():
             st.warning("Power, communication and both cannot all be zero — using the default weights.")
             w = DEFAULT_WEIGHTS
-        st.caption("Positive weights are rescaled to sum to 1. The score is a preference calculation, "
-                   "not a safety rating.")
+        st.caption("Importances are rescaled to sum to 1. The score is a planning preference, not a safety rating.")
     return w
 
 

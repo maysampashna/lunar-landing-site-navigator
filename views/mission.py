@@ -60,13 +60,21 @@ with st.container(key="card_ctl"):
     adv = c[4].popover("Advanced", icon=":material/settings:", width="stretch")
     time_slot = st.container()
     with adv:
-        require_dsn = st.toggle("Require a DSN complex to see the Moon", True)
-        dsn_mask = st.slider("DSN elevation mask (°)", 0.0, 20.0, 10.0, 1.0)
+        def grp(icon, title):
+            st.markdown(f'<div class="lln-ct" style="font-size:0.98rem;margin:6px 0 2px 0;border-bottom:1px solid '
+                        f'#1C3A4A;padding-bottom:4px">{ui.mi(icon, 20)}<span>{title}</span></div>',
+                        unsafe_allow_html=True)
+        grp("cell_tower", "Communication (Earth contact)")
+        require_dsn = st.toggle("Require a NASA DSN antenna to see the Moon", True)
+        dsn_mask = st.slider("DSN minimum elevation (°)", 0.0, 20.0, 10.0, 1.0)
         mask = st.slider("Earth clearance above terrain (°)", 0.0, 10.0, 0.0, 0.5)
-        thr = st.slider("Sunlit if ≥ this fraction of the Sun's disc is visible", 0.05, 1.0, 0.5, 0.05)
-        area = st.number_input("Solar array area (m²)", 1.0, 200.0, 10.0)
-        eff = st.slider("Array efficiency", 0.1, 0.4, 0.30)
-        load = st.number_input("Constant load (W)", 50.0, 20000.0, 1000.0, 50.0)
+        grp("wb_sunny", "Power (sunlight and battery)")
+        thr = st.slider("Sunlit when this fraction of the Sun's disc is visible", 0.05, 1.0, 0.5, 0.05)
+        p1, p2 = st.columns(2)
+        area = p1.number_input("Solar array (m²)", 1.0, 200.0, 10.0)
+        eff = p2.slider("Array efficiency", 0.1, 0.4, 0.30)
+        load = st.number_input("Constant power load (W)", 50.0, 20000.0, 1000.0, 50.0)
+        grp("leaderboard", "Ranking")
         extra = st.multiselect("Landing-delay scenarios (h)", [24, 48, 72], default=[24, 48])
         w = ui.weights_sidebar(expander=False)
 
@@ -136,6 +144,7 @@ def next_events_for(sid, t_from):
 st.markdown(f'<div class="lln-sec">{ui.mi("leaderboard")}Station ranking<span class="lln-tag">over the full stay</span>'
             '</div>', unsafe_allow_html=True)
 with st.container():
+    late = "/".join(f"+{h}" for h in shifts if h) + " h" if len(shifts) > 1 else "none"
     rows = []
     for sid in order:
         r = base.loc[sid]
@@ -143,21 +152,30 @@ with st.container():
         rank = 1 + sum(round(worst[s]) > round(worst[sid]) for s in order)
         tied = sum(round(worst[s]) == round(worst[sid]) for s in order) > 1
         rows.append(f'<tr class="{"top" if sid in winners else ""}"><td>{rank}{"=" if tied else ""}</td>'
-                    f'<td><b>{names[sid]}</b></td><td>{ui.chip(*ui.STATUS[status[sid]])}</td>'
+                    f'<td><b>{names[sid]}</b></td>'
                     f'<td class="n">{r.pct_sunlit:.0f}</td><td class="n">{r.pct_dte:.0f}</td>'
-                    f'<td class="n">{r.pct_both:.0f}</td><td class="n">{r.longest_dark_h:.0f}</td>'
-                    f'<td class="n">{r.required_nameplate_kwh:.0f}</td><td class="n"><b>{r.worst_case_score:.0f}</b></td>'
-                    f'<td>{ui.chip(lab, col)}</td></tr>')
+                    f'<td class="n">{r.longest_dark_h:.0f}</td><td class="n">{r.longest_no_dte_h:.0f}</td>'
+                    f'<td class="n">{r.required_nameplate_kwh:.0f}</td>'
+                    f'<td class="n">{r.score:.0f}</td><td class="n"><b>{r.worst_case_score:.0f}</b></td>'
+                    f'<td>{ui.chip(lab, col)}</td><td>{ui.chip(*ui.STATUS[status[sid]])}</td></tr>')
     st.markdown(
-        '<table class="lln-table"><tr><th>#</th><th>Site</th><th title="Sun / Earth at the selected time">Now</th>'
-        '<th class="n" title="Share of the stay with sunlight">Sun %</th>'
-        '<th class="n" title="Share of the stay with Earth contact (Earth above terrain + DSN geometry)">Earth %</th>'
-        '<th class="n" title="Sunlight and Earth contact at the same time">Both %</th>'
+        '<table class="lln-table"><tr><th>#</th><th>Site</th>'
+        '<th class="n" title="Share of the stay with enough of the Sun above the terrain to generate power">'
+        'Sunlight %</th>'
+        '<th class="n" title="Share of the stay with Earth above the terrain and a NASA DSN antenna able to see the '
+        'Moon (direct-to-Earth line of sight)">Earth contact %</th>'
         '<th class="n" title="Longest continuous period without sunlight">Longest dark (h)</th>'
-        '<th class="n" title="Illustrative battery nameplate for the constant load">Storage (kWh)</th>'
-        '<th class="n" title="Lowest score across the landing-delay scenarios">Worst-case score</th>'
-        '<th>Rating</th></tr>' + "".join(rows) + "</table>", unsafe_allow_html=True)
-    st.caption("Equal scores share a rank (1=). \"Now\" = Sun / Earth at the selected time.")
+        '<th class="n" title="Longest continuous period without direct-to-Earth contact">Longest Earth gap (h)</th>'
+        '<th class="n" title="Illustrative battery needed to carry the load through the dark periods">'
+        'Battery needed (kWh)</th>'
+        '<th class="n" title="0–100 score if the landing happens at the planned time">Score on time</th>'
+        f'<th class="n" title="Lowest score if the landing slips by {late}; sites are ranked by this">'
+        'Score if delayed</th>'
+        '<th>Rating</th><th title="Sun and Earth at the selected time on the slider">At selected time</th></tr>'
+        + "".join(rows) + "</table>", unsafe_allow_html=True)
+    st.caption(f"Columns describe a landing at the planned time. Sites are ranked by **Score if delayed** — the lowest "
+               f"score if the landing slips ({late}) — so a site that only works on schedule ranks lower. "
+               "Equal scores share a rank (1=). Hover any column header for its definition.")
 st.write("")
 
 # ------------------------------------------------------------------ data for the station views
