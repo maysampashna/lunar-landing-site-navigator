@@ -35,3 +35,16 @@ out["region_ul"] = np.array([X0 + ca * PX, Y0 - ra * PX, 12 * PX])
 out["meta"] = np.array([HALF, F * PX])
 np.savez_compressed("_github_upload/data/terrain3d.npz", **out)
 print("region", reg.shape, "ul", out["region_ul"])
+
+# wide tiles for the 3D observer view: +/-96 km at 640 m cells (keys wide_<site>, wxy_<site>, wmeta)
+out = dict(np.load("_github_upload/data/terrain3d.npz"))
+HALF, F = 96000.0, 8
+for s in sites:
+    lat, lon = float(s["lat_deg"]), float(s["lon_deg"])
+    rho = 2 * R * np.tan(np.radians((90 + lat) / 2))
+    x, y = rho * np.sin(np.radians(lon)), rho * np.cos(np.radians(lon))
+    r0, c0 = rc(x, y); n = int(HALF / PX); a, b = max(r0 - n, 0), max(c0 - n, 0)
+    out[f"wide_{s['site_id']}"] = np.round(block(dem[a:r0 + n, b:c0 + n], F)).astype(np.int16)
+    out[f"wxy_{s['site_id']}"] = np.array([x, y, X0 + b * PX, Y0 - a * PX])
+out["wmeta"] = np.array([HALF, F * PX])
+np.savez_compressed("_github_upload/data/terrain3d.npz", **out)

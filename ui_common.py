@@ -140,7 +140,7 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 .lln-badge {{display:inline-flex; align-items:center; gap:6px; background:rgba(61,220,151,0.10); border:1px solid rgba(61,220,151,0.55);
    color:#3DDC97; border-radius:999px; padding:4px 12px; font-size:0.82rem; font-weight:600;}}
 .lln-foot {{color:#8FA4B0; font-size:0.84rem; margin-top:18px; border-top:1px solid {BORDER}; padding-top:10px;}}
-.lln-hero {{padding:44px 40px 36px 40px; min-height:200px; display:flex; align-items:center;
+.lln-hero {{padding:28px 36px 24px 36px; min-height:150px; display:flex; align-items:center;
    background: linear-gradient(90deg, rgba(6,19,31,0.95) 0%, rgba(6,19,31,0.70) 55%, rgba(6,19,31,0.20) 100%), url("BANNER_URI");
    background-size:cover; background-position:center;}}
 .lln-hero h1 {{font-size:2.5rem !important;}}
@@ -490,51 +490,54 @@ def terrain3d():
 MOON_GREYS = [[0, "#1B1E24"], [0.35, "#4A4F58"], [0.7, "#8C9099"], [1, "#D6D8DC"]]
 
 
-def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int = 600):
-    """3D view from the site: LOLA terrain within 40 km (east/north/up, lunar curvature included), the full
-    150 km skyline drawn as a ring, and the Sun and Earth placed along their true azimuth/elevation."""
+def observer_3d(site_id: str, row, horizon_prof, exag: float = 2.0, height: int = 600):
+    """3D view from the site: LOLA terrain for ~96 km around the station (640 m cells, lunar curvature included),
+    shaded by the real Sun direction, with the Sun and Earth placed along their true azimuth/elevation.
+
+    The surface is drawn in its native polar-stereographic grid (so x/y stay 1-D and the page stays light);
+    local east/north unit vectors convert the Sun, Earth and compass directions into that grid."""
     t = terrain3d()
-    if t is None or f"site_{site_id}" not in t:
+    key = f"wide_{site_id}" if t is not None and f"wide_{site_id}" in t else f"site_{site_id}"
+    if t is None or key not in t:
         return None
-    z = t[f"site_{site_id}"].astype(float)
-    xs, ys, ulx, uly = t[f"xy_{site_id}"] / 1000.0
-    cell = float(t["meta"][1]) / 1000.0
-    n = z.shape[0]
-    XX, YY = np.meshgrid(ulx + (np.arange(n) + 0.5) * cell, uly - (np.arange(n) + 0.5) * cell)
-    dx, dy = XX - xs, YY - ys
+    wide = key.startswith("wide_")
+    z = t[key].astype(float)
+    xs, ys, ulx, uly = t[("wxy_" if wide else "xy_") + site_id] / 1000.0
+    cell = float(t["wmeta" if wide else "meta"][1]) / 1000.0
+    radius = (float(t["wmeta" if wide else "meta"][0]) / 1000.0) - 2.0
+    n0, n1 = z.shape
+    X = ulx + (np.arange(n1) + 0.5) * cell - xs              # map-grid offsets from the station (km)
+    Y = uly - (np.arange(n0) + 0.5) * cell - ys
+    XX, YY = np.meshgrid(X, Y)
+    rr = np.hypot(XX, YY)
     lon = np.radians(float(sites_df().set_index("site_id").loc[site_id, "lon_deg"]))
-    E = dx * np.cos(lon) - dy * np.sin(lon)            # local east (km)   — orientation checked against
-    N = dx * np.sin(lon) + dy * np.cos(lon)            # local north (km)    the stored horizon profiles
-    h0 = horizon_prof.site_height_m
-    rr = np.hypot(E, N)
-    Z = ((z - h0) / 1000.0 - rr ** 2 / (2 * R_MOON_KM)) * exag
-    Z[rr > 38.0] = np.nan                                 # round 38 km disc, matching the skyline ring
-    fig = go.Figure()
-    sun_dir = np.array([np.sin(np.radians(row.sun_az_deg)), np.cos(np.radians(row.sun_az_deg)),
-                        np.tan(np.radians(max(row.sun_el_deg, 0.5))) * exag])
-    # shading from the real Sun direction at the selected time, using true (unexaggerated) slopes
-    zt = (z - h0) / 1000.0 - rr ** 2 / (2 * R_MOON_KM)
-    nE, nN = np.gradient(zt, axis=1), np.gradient(zt, axis=0)
-    dEc, dNc = np.gradient(E, axis=1), np.gradient(N, axis=1)
-    dEr, dNr = np.gradient(E, axis=0), np.gradient(N, axis=0)
-    det = dEc * dNr - dEr * dNc
-    zE = (nE * dNr - nN * dNc) / det                       # dz/dEast  (chain rule on the rotated grid)
-    zN = (nN * dEc - nE * dEr) / det                       # dz/dNorth
+    e_hat = np.array([np.cos(lon), -np.sin(lon)])             # local east in map-grid coordinates
+    n_hat = np.array([np.sin(lon), np.cos(lon)])              # local north (checked against stored horizons)
+
+    def to_grid(az_deg, dist):
+        a = np.radians(az_deg)
+        return dist * (np.sin(a) * e_hat + np.cos(a) * n_hat)
+
+    zt = (z - horizon_prof.site_height_m) / 1000.0 - rr ** 2 / (2 * R_MOON_KM)   # true heights (km)
+    Z = np.where(rr > radius, np.nan, zt * exag)
+    # shading from the real Sun direction at the selected time, using true slopes
+    zy, zx = np.gradient(zt, -cell, cell)                     # rows run toward -Y
     sa, se = np.radians(row.sun_az_deg), np.radians(row.sun_el_deg)
-    sv = np.array([np.sin(sa) * np.cos(se), np.cos(sa) * np.cos(se), np.sin(se)])
-    lam = (-zE * sv[0] - zN * sv[1] + sv[2]) / np.sqrt(1 + zE ** 2 + zN ** 2)
+    sxy = np.cos(se) * (np.sin(sa) * e_hat + np.cos(sa) * n_hat)
+    lam = (-zx * sxy[0] - zy * sxy[1] + np.sin(se)) / np.sqrt(1 + zx ** 2 + zy ** 2)
     shade = 0.22 + 0.78 * np.clip(lam * 3.0, 0, 1) ** 0.6 if row.sun_el_deg > -1 else np.full_like(zt, 0.12)
-    shade = np.where(np.isnan(Z), np.nan, shade)
-    fig.add_trace(go.Surface(x=E, y=N, z=Z, surfacecolor=shade, cmin=0, cmax=1, showscale=False,
-                             colorscale=[[0, "#0B0C0F"], [0.3, "#3A3B3F"], [0.65, "#8E8C87"], [1, "#DEDBD3"]],
-                             hoverinfo="skip", name="LOLA terrain",
-                             lighting=dict(ambient=1.0, diffuse=0.0, specular=0.0, fresnel=0.0)))
+    fig = go.Figure(go.Surface(x=np.round(X, 2), y=np.round(Y, 2), z=np.round(Z, 3),
+                               surfacecolor=np.round(np.where(np.isnan(Z), np.nan, shade), 3),
+                               cmin=0, cmax=1, showscale=False,
+                               colorscale=[[0, "#0B0C0F"], [0.3, "#3A3B3F"], [0.65, "#8E8C87"], [1, "#DEDBD3"]],
+                               hoverinfo="skip", name="LOLA terrain",
+                               lighting=dict(ambient=1.0, diffuse=0.0, specular=0.0, fresnel=0.0)))
     for lab, a in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
-        fig.add_trace(go.Scatter3d(x=[41 * np.sin(np.radians(a))], y=[41 * np.cos(np.radians(a))], z=[0], mode="text",
-                                   text=[f"<b>{lab}</b>"], textfont=dict(color="#E6F1F5", size=15), showlegend=False,
-                                   hoverinfo="skip"))
+        px_, py_ = to_grid(a, radius + 6)
+        fig.add_trace(go.Scatter3d(x=[px_], y=[py_], z=[0], mode="text", text=[f"<b>{lab}</b>"],
+                                   textfont=dict(color="#E6F1F5", size=16), showlegend=False, hoverinfo="skip"))
     site_name = sites_df().set_index("site_id").loc[site_id, "name"]
-    pole = 2.2 * exag / 3.0
+    pole = radius * 0.06
     fig.add_trace(go.Scatter3d(x=[0, 0], y=[0, 0], z=[0, pole], mode="lines", line=dict(color=AMBER, width=8),
                                showlegend=False, hoverinfo="skip"))
     fig.add_trace(go.Scatter3d(x=[0], y=[0], z=[pole], mode="markers+text", text=[f"<b>Station · {site_name}</b>"],
@@ -542,33 +545,32 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 3.0, height: int 
                                marker=dict(size=10, color=AMBER, symbol="diamond", line=dict(color="white", width=2)),
                                name="Station (site)", hoverinfo="skip"))
     th = np.linspace(0, 2 * np.pi, 60)
-    fig.add_trace(go.Scatter3d(x=1.2 * np.cos(th), y=1.2 * np.sin(th), z=np.full(60, 0.05), mode="lines",
-                               line=dict(color=AMBER, width=5), showlegend=False, hoverinfo="skip"))
-    D = 47.0                                               # just beyond the skyline ring
-    for key, nm, col, tpos in (("sun", "Sun", "#FFD36E", "top center"), ("earth", "Earth", EARTH, "bottom center")):
-        a_, e_ = np.radians(row[f"{key}_az_deg"]), row[f"{key}_el_deg"]
-        clear = e_ - row[f"horizon_at_{key}_deg"]
-        vis = (row.sun_frac > 0) if key == "sun" else bool(row.earth_in_view)
-        p = [D * np.sin(a_), D * np.cos(a_), D * np.tan(np.radians(e_)) * exag]
+    fig.add_trace(go.Scatter3d(x=radius * 0.03 * np.cos(th), y=radius * 0.03 * np.sin(th), z=np.full(60, 0.05),
+                               mode="lines", line=dict(color=AMBER, width=5), showlegend=False, hoverinfo="skip"))
+    D = radius + 12.0                                         # just beyond the terrain disc
+    for k_, nm, col, tpos in (("sun", "Sun", "#FFD36E", "top center"), ("earth", "Earth", EARTH, "bottom center")):
+        e_ = row[f"{k_}_el_deg"]
+        vis = (row.sun_frac > 0) if k_ == "sun" else bool(row.earth_in_view)
+        gx, gy = to_grid(row[f"{k_}_az_deg"], D)
+        pz = D * np.tan(np.radians(e_)) * exag
         c = col if vis else "#8A93A6"
-        fig.add_trace(go.Scatter3d(x=[0, p[0]], y=[0, p[1]], z=[0.05, p[2]], mode="lines",
+        fig.add_trace(go.Scatter3d(x=[0, gx], y=[0, gy], z=[0.05, pz], mode="lines",
                                    line=dict(color=c, width=4, dash="solid" if vis else "dash"), showlegend=False,
                                    hoverinfo="skip"))
         fig.add_trace(go.Scatter3d(
-            x=[p[0]], y=[p[1]], z=[p[2]], mode="markers+text", name=nm,
-            text=[f"<b>{nm}</b> · El {e_:+.2f}° · Az {row[f'{key}_az_deg']:.0f}°" + ("" if vis else " (behind terrain)")],
+            x=[gx], y=[gy], z=[pz], mode="markers+text", name=nm,
+            text=[f"<b>{nm}</b> · El {e_:+.2f}° · Az {row[f'{k_}_az_deg']:.0f}°" + ("" if vis else " (behind terrain)")],
             textposition=tpos, textfont=dict(color=c, size=14),
-            marker=dict(size=13 if key == "sun" else 11, color=c if vis else "rgba(0,0,0,0)",
+            marker=dict(size=13 if k_ == "sun" else 11, color=c if vis else "rgba(0,0,0,0)",
                         line=dict(color=c, width=3)), hoverinfo="skip"))
-    cam_az = np.radians(row.sun_az_deg - 115.0)          # side-on to the Sun: lit slopes and the Sun both in view
-    back = np.array([np.sin(cam_az), np.cos(cam_az)])
+    cam = to_grid(row.sun_az_deg - 115.0, 1.0)               # side-on to the Sun: lit slopes and the Sun in view
     fig.update_layout(
         height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", uirevision=site_id,
         font=dict(family=FONT, color="#C9D1E3"), showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=0.0, x=0.01, bgcolor="rgba(6,19,31,0.6)"),
         scene=dict(bgcolor="#000000", aspectmode="data",
                    xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
-                   camera=dict(eye=dict(x=float(back[0]) * 1.75, y=float(back[1]) * 1.75, z=1.0),
+                   camera=dict(eye=dict(x=float(cam[0]) * 1.8, y=float(cam[1]) * 1.8, z=1.0),
                                center=dict(x=0, y=0, z=-0.1))))
     return fig
 
@@ -614,3 +616,20 @@ def region_3d(site_ids, status: dict | None = None, scores: dict | None = None, 
                                  xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
                                  camera=dict(eye=dict(x=0.0, y=-1.55, z=1.65), center=dict(x=0, y=0, z=-0.25))))
     return fig
+
+
+# ------------------------------------------------------------------ hourly visibility shared by Home and Date Finder
+@st.cache_data(show_spinner="Computing DSN coverage of the Moon…")
+def dsn_all_hourly():
+    from engine import live
+    from engine.dsn import coverage, moon_elevations
+    e = ephem(list(names())[0])
+    return coverage(moon_elevations(live.sky(), pd.DatetimeIndex(e.time_utc)), 10.0)
+
+
+@st.cache_data(show_spinner="Scanning visibility…")
+def site_vis_hourly(sid: str, thr: float = 0.5, mask: float = 0.0, req: bool = True):
+    from engine import live
+    p = visibility.VisParams(sunlit_threshold=thr, earth_mask_deg=mask, require_dsn=req)
+    dsn_any = dsn_all_hourly()["dsn_any"].to_numpy() if req and live.kernels_available() else None
+    return visibility.compute(ephem(sid), horizon(sid), p, dsn_any=dsn_any)

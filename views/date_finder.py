@@ -48,18 +48,7 @@ if not chosen or not isinstance(rng, tuple) or len(rng) != 2:
     st.stop()
 
 
-@st.cache_data(show_spinner="Computing DSN coverage of the Moon…")
-def dsn_all():
-    e = ui.ephem(list(names)[0])
-    from engine.dsn import coverage, moon_elevations
-    return coverage(moon_elevations(live.sky(), pd.DatetimeIndex(e.time_utc)), 10.0)
-
-
-@st.cache_data(show_spinner="Scanning landing windows…")
-def site_vis(sid, thr_, mask_, req_):
-    p = visibility.VisParams(sunlit_threshold=thr_, earth_mask_deg=mask_, require_dsn=req_)
-    dsn_any = dsn_all()["dsn_any"].to_numpy() if req_ and live.kernels_available() else None
-    return visibility.compute(ui.ephem(sid), ui.horizon(sid), p, dsn_any=dsn_any)
+site_vis = ui.site_vis_hourly
 
 
 power = PowerParams()

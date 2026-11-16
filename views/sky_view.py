@@ -101,7 +101,7 @@ with col3d:
         else:
             st.plotly_chart(fig3, width="stretch", config={"displaylogo": False, "scrollZoom": True,
                                                            "modeBarButtonsToRemove": ["toImage"]})
-            st.caption("Terrain within 40 km of the station, shaded by the Sun at the selected time; heights ×2. "
+            st.caption("NASA LOLA terrain for ~96 km around the station, shaded by the Sun at the selected time; heights ×2. "
                        "Solid line = in view, dashed grey = behind terrain. Visibility uses all terrain out to 150 km.")
 
 az = np.concatenate([hp.az_deg, [360.0]])
@@ -151,14 +151,14 @@ def play_controls(n, ms=110):
                       bgcolor=ui.BORDER, activebgcolor=ui.EARTH, tickcolor=ui.BORDER)])
 
 
-st.markdown(f'<div class="lln-sec">{ui.mi("insights")}More views<span class="lln-tag">same site and replay</span></div>',
+st.markdown(f'<div class="lln-sec">{ui.mi("insights")}Panorama and all-sky chart<span class="lln-tag">same site and replay</span></div>',
             unsafe_allow_html=True)
 with st.container():
-    tab1, tab2, tab3 = st.tabs([":material/play_circle: Panorama Replay", ":material/center_focus_strong: Telescope Close-Up",
-                                ":material/radar: All-Sky Chart"])
+    col_pan, col_sky = st.columns([1.75, 1], gap="medium")
 
     # ------------------------------------------------------------------ 1. panorama animation
-    with tab1:
+    with col_pan:
+        ui.card_title("panorama", "Panorama replay", "press ▶ Play")
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=az, y=hz, fill="tozeroy", mode="lines", name="Terrain (LOLA)", showlegend=False,
                                  line=dict(color="#9AA4B8", width=1.5), fillcolor="#2B3142", hoverinfo="skip"))
@@ -188,63 +188,16 @@ with st.container():
         fig.update_xaxes(range=[0, 360], tickvals=[0, 45, 90, 135, 180, 225, 270, 315, 360],
                          ticktext=["N 0°", "NE", "E 90°", "SE", "S 180°", "SW", "W 270°", "NW", "N"], title=None)
         fig.update_yaxes(range=[ymin, ymax], title="Elevation (°)")
-        fig = ui.style_fig(fig, 580)
+        fig = ui.style_fig(fig, 540)
         fig.update_layout(title=dict(text=label(idx), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w)),
                           plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=78, b=95),
                           legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
         fig.update_layout(title=dict(y=0.985, yref="container", x=0.01, xanchor="left"))
         st.plotly_chart(fig, width="stretch")
 
-    # ------------------------------------------------------------------ 2. telescope close-up (true size)
-    with tab2:
-        body = st.segmented_control("Track", ["Earth", "Sun"], default="Earth", label_visibility="collapsed") or "Earth"
-        key = "earth" if body == "Earth" else "sun"
-        col = ui.EARTH if key == "earth" else "#FFD36E"
-        fov = 6.0 if key == "earth" else 4.0
-        th = np.linspace(0, 2 * np.pi, 72)
-
-        def disc(i):
-            row = w.iloc[i]
-            rad = row[f"{key}_radius_deg"]
-            el = row[f"{key}_el_deg"]
-            return row[f"{key}_az_deg"] + rad * np.cos(th) / np.cos(np.radians(el)), el + rad * np.sin(th)
-
-        def terrain_window(center):
-            a = np.arange(center - 3 * fov, center + 3 * fov, 0.1)
-            return a, hp.at(a % 360)
-
-        fig = go.Figure()
-        dx, dy = disc(idx)
-        fig.add_trace(go.Scatter(x=dx, y=dy, fill="toself", mode="lines", fillcolor=col, line=dict(color="white", width=1),
-                                 name=f"{body.split(' ')[-1]} (true angular size)"))
-        ax_, hz_ = terrain_window(w.iloc[idx][f"{key}_az_deg"])
-        fig.add_trace(go.Scatter(x=ax_, y=np.full_like(ax_, -30), mode="lines", line=dict(width=0),
-                                 showlegend=False, hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=ax_, y=hz_, fill="tonexty", mode="lines", line=dict(color="#9AA4B8"),
-                                 fillcolor="#2B3142", name="Terrain (drawn in front)", hoverinfo="skip"))
-        frames = []
-        for i in range(len(w)):
-            cz = w.iloc[i][f"{key}_az_deg"]
-            ax_, hz_ = terrain_window(cz)
-            dx, dy = disc(i)
-            ce = w.iloc[i][f"{key}_el_deg"]
-            frames.append(go.Frame(name=str(i), traces=[0, 1, 2], data=[
-                go.Scatter(x=dx, y=dy), go.Scatter(x=ax_, y=np.full_like(ax_, -30)), go.Scatter(x=ax_, y=hz_)],
-                layout=dict(title=dict(text=label(i)), xaxis=dict(range=[cz - fov, cz + fov]),
-                            yaxis=dict(range=[ce - fov * 0.55, ce + fov * 0.55]))))
-        fig.frames = frames
-        cz, ce = w.iloc[idx][f"{key}_az_deg"], w.iloc[idx][f"{key}_el_deg"]
-        fig.update_xaxes(range=[cz - fov, cz + fov], title="Azimuth (°)")
-        fig.update_yaxes(range=[ce - fov * 0.55, ce + fov * 0.55], title="Elevation (°)", scaleanchor="x", scaleratio=1)
-        fig = ui.style_fig(fig, 580)
-        fig.update_layout(title=dict(text=label(idx), font=dict(size=13, color="#E6EAF2")), **play_controls(len(w), 140),
-                          plot_bgcolor="#03050C", margin=dict(l=10, r=10, t=78, b=95),
-                          legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
-        fig.update_layout(title=dict(y=0.985, yref="container", x=0.01, xanchor="left"))
-        st.plotly_chart(fig, width="stretch")
-
     # ------------------------------------------------------------------ 3. all-sky horizon chart
-    with tab3:
+    with col_sky:
+        ui.card_title("radar", "All-sky chart", "looking straight up")
         top = float(np.ceil(max(ymax, 12)))
         rr = lambda el: top - np.asarray(el, float)       # noqa: E731  centre = high elevation, rim = low
         fig = go.Figure()
@@ -269,15 +222,13 @@ with st.container():
                                      radialaxis=dict(range=[0, top - ymin + 1], tickvals=[rr(e) for e in ticks],
                                                      ticktext=[f"{e}°" for e in ticks], gridcolor="#1E2742",
                                                      color="#7D879C", angle=90, tickfont=dict(size=9))))
-        fig = ui.style_fig(fig, 600)
+        fig = ui.style_fig(fig, 540)
         st.plotly_chart(fig, width="stretch")
 
 
 with st.expander("How to read these views", icon=":material/help:"):
-    st.markdown("- **3D Observer View**: real LOLA terrain for 40 km around the station. Heights are shown ×2, and the Sun/Earth directions are scaled the same way, so the picture stays geometrically consistent.\n- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
+    st.markdown("- **3D Observer View**: real LOLA terrain for ~96 km around the station. Heights are shown ×2, and the Sun/Earth directions are scaled the same way, so the picture stays geometrically consistent.\n- **Panorama**: the full 360° skyline from LOLA terrain. Azimuth 0° = geographic north. "
                     "Symbols are enlarged; vertical scale is exaggerated (polar Sun angles are only a few degrees).\n"
-                    "- **Telescope**: follows one body at its true angular size (Earth ≈ 1.9°, Sun ≈ 0.53°), with "
-                    "terrain drawn in front, so you see exactly how much clears the skyline.\n"
                     "- **All-sky**: looking straight up; elevation increases toward the centre, tracks fade light → dark "
                     "over time.\n- Potential DTE here is geometric (Earth above terrain); DSN geometry is in "
                     "Mission Overview.")
