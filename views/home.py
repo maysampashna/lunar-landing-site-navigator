@@ -40,7 +40,7 @@ WHY = ("NASA selected this region as one of nine Artemis III candidates in Octob
 def tip(sid):
     h = srow.loc[sid, "height_m"] / 1000.0
     return (f'<div class="tip"><div class="tn">{names[sid]}</div>'
-            f'<div class="tx">{ABOUT.get(sid, "")} Elevation {h:+.1f} km.</div>'
+            f'<div class="tx">{ABOUT.get(sid, "")} Elevation {srow.loc[sid, "height_m"]:+,.0f} m.</div>'
             f'<div class="tx why">{WHY}</div></div>')
 
 
@@ -122,10 +122,9 @@ BUTTONS = (
     f'<span class="lb">Data Validation</span><span class="ar">{ui.mi("arrow_forward", 24, "#2DD4BF")}</span></a>'
     '</div>')
 
-mode = st.session_state.get("home_mode", "3D Moon")
+mode = "3D Moon"
 if mode == "Picture":
     st.markdown('<div class="lln-h">' + hotspots + TITLE + BUTTONS + '</div>', unsafe_allow_html=True)
-    credit = "Rendered from NASA LOLA terrain (Lunar Reconnaissance Orbiter)"
 else:
     import numpy as np
     import plotly.graph_objects as go
@@ -139,7 +138,7 @@ else:
                 line = f"{line} {w}".strip()
         return "<br>".join(out + [line])
 
-    CAM = dict(lat=-60.0, dist=0.78, depth=0.42)     # picture-like start: across the pole, horizon on top
+    CAM = dict(lat=-52.0, dist=0.70, depth=0.43)     # picture-like start: across the pole, horizon on top
     HOME_EXAG = 3.0
 
     def home_globe(rev):
@@ -178,25 +177,23 @@ else:
         fig.add_trace(go.Scatter3d(x=pts[:, 0], y=pts[:, 1], z=pts[:, 2], mode="markers", hoverinfo="skip",
                                    marker=dict(size=7, color="#E6FCFF", line=dict(color="#50DCFF", width=4))))
         sx_, sy_ = pts @ right, pts @ up                              # screen-plane coordinates (km)
-        cx_, cy_ = sx_.mean(), sy_.mean()
-        order = np.argsort(np.arctan2(sy_ - cy_, sx_ - cx_))
+        order = np.argsort(sx_)                                        # left → right on screen
+        n_ = len(order)
         anns = []
         for rank, k in enumerate(order):
             sid = ids[k]
-            ang = np.arctan2(sy_[k] - cy_, sx_[k] - cx_)
-            if np.hypot(sx_[k] - cx_, sy_[k] - cy_) < 8:              # a site at the centre: label straight down
-                ang = -np.pi / 2
-            rr_ = 1.0 + 0.7 * (rank % 2)
-            ox, oy = 125 * rr_ * np.cos(ang), 95 * rr_ * np.sin(ang)
+            ox = (rank - (n_ - 1) / 2) * 34
+            oy = 62 + 40 * [0, 2, 1, 3][rank % 4]
             anns.append(dict(
                 x=float(pts[k, 0]), y=float(pts[k, 1]), z=float(pts[k, 2]), text=f"<b>{names[sid]}</b>",
-                showarrow=True, arrowcolor="#50DCFF", arrowwidth=2, arrowhead=0, ax=int(ox), ay=int(-oy),
-                bgcolor="rgba(6,22,36,0.92)", bordercolor="#6EE1FF", borderwidth=1.5, borderpad=5,
-                font=dict(color="#F0F8FC", size=13, family=ui.FONT),
+                showarrow=True, arrowcolor="rgba(110,225,255,0.85)", arrowwidth=1.5, arrowhead=6, arrowsize=0.8,
+                startstandoff=0, standoff=4, ax=int(ox), ay=int(-oy),
+                bgcolor="rgba(4,18,32,0.88)", bordercolor="rgba(110,225,255,0.9)", borderwidth=1, borderpad=7,
+                font=dict(color="#EAF7FC", size=13, family=ui.FONT),
                 hovertext=(f"<b>{names[sid]}</b><br>{wrap(ABOUT.get(sid, ''))} Elevation "
-                           f"{srow.loc[sid, 'height_m'] / 1000:+.1f} km.<br><br>{wrap(WHY)}"),
-                hoverlabel=dict(bgcolor="rgba(5,16,28,0.97)", bordercolor="#50DCFF",
-                                font=dict(color="#DCE9EF", size=12, family=ui.FONT))))
+                           f"{srow.loc[sid, 'height_m']:+,.0f} m.<br><br>{wrap(WHY)}"),
+                hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor="#6EE1FF",
+                                font=dict(color="#E2EEF3", size=13, family=ui.FONT))))
         L = 1.08 * ui.R_MOON_KM
         ax = dict(visible=False, range=[-L, L])
         fig.update_layout(height=800, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
@@ -217,13 +214,5 @@ else:
         st.plotly_chart(home_globe(rev), width="stretch", key=f"home_globe_{rev}",
                         config={"displayModeBar": False, "scrollZoom": True})
         st.markdown('<div class="lln-ov bot">' + BUTTONS + '</div>', unsafe_allow_html=True)
-    credit = ("NASA LOLA terrain on the south polar cap (heights ×3), smooth sphere elsewhere · drag to rotate, "
-              "scroll to zoom")
 
-c1, c2 = st.columns([1, 4], vertical_alignment="center")
-c1.segmented_control("Home view", ["3D Moon", "Picture"], key="home_mode", default="3D Moon",
-                     label_visibility="collapsed")
-c2.markdown(f'<div class="lln-credit">{credit} · sites: USGS Artemis III regions · Sun placement illustrative</div>',
-            unsafe_allow_html=True)
 
-ui.footer(link=False)
