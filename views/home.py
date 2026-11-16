@@ -140,6 +140,7 @@ else:
 
     CAM = dict(lat=-52.0, dist=0.70, depth=0.43, lift=0.045)     # picture-like start: across the pole, horizon on top
     HOME_EXAG = 3.0
+    LABEL = dict(ring=430.0, stem=40.0, lift=60.0, tilt=230.0)               # km: label ring radius, stem height, ring height
 
     @st.cache_resource
     def home_mesh(exag: float):
@@ -215,33 +216,54 @@ else:
         fig.add_trace(go.Scatter3d(x=pts[:, 0], y=pts[:, 1], z=pts[:, 2], mode="markers", hoverinfo="skip",
                                    marker=dict(size=7, color="#F4FBFF",
                                                line=dict(color=[ui.site_color(i) for i in ids], width=5))))
-        sx_, sy_ = pts @ right, pts @ up                              # screen-plane coordinates (km)
-        order = np.argsort(sx_)                                        # left → right on screen
+        # Labels live in 3D on a ring around the site cluster, in the same angular order as the sites, so the
+        # leaders never cross however the Moon is turned. Each leader: a short vertical stem, then an arm out.
+        Rm = ui.R_MOON_KM
+        nrm = pts.mean(axis=0); nrm /= np.linalg.norm(nrm)             # local vertical at the cluster
+        e1 = np.cross(nrm, [1.0, 0.0, 0.0]); e1 /= np.linalg.norm(e1)
+        e2 = np.cross(nrm, e1)
+        rel = pts - np.outer(pts @ nrm, nrm)
+        ang = np.arctan2(rel @ e2, rel @ e1)
+        order = np.argsort(ang)
         n_ = len(order)
+        step = 2 * np.pi / n_
+        base = np.angle(np.mean(np.exp(1j * (ang[order] - step * np.arange(n_)))))
+        RING, STEM, LIFT = LABEL["ring"], LABEL["stem"], LABEL["lift"]
+        cam_h = eye - (eye @ nrm) * nrm; cam_h /= np.linalg.norm(cam_h)     # toward the starting camera
         anns, label_colors = [], []
         for rank, k in enumerate(order):
             sid = ids[k]
-            label_colors.append(ui.site_color(sid))
-            ox = (rank - (n_ - 1) / 2) * 46
-            oy = 50 + 42 * [0, 2, 1, 3][rank % 4]
+            col = ui.site_color(sid)
+            label_colors.append(col)
+            t_ = base + step * rank
+            up_k = pts[k] / np.linalg.norm(pts[k])
+            top = pts[k] + up_k * STEM                                  # top of the vertical stem
+            hdir = np.cos(t_) * e1 + np.sin(t_) * e2
+            lift_k = LIFT + LABEL["tilt"] * (1 - hdir @ cam_h) / 2          # near side low, far side high
+            anchor = nrm * Rm + RING * hdir
+            anchor = anchor / np.linalg.norm(anchor) * (Rm + lift_k)
+            line = np.array([pts[k], top, anchor])
+            fig.add_trace(go.Scatter3d(x=line[:, 0], y=line[:, 1], z=line[:, 2], mode="lines", hoverinfo="skip",
+                                       line=dict(color=col, width=4)))
             anns.append(dict(
-                x=float(pts[k, 0]), y=float(pts[k, 1]), z=float(pts[k, 2]), text=f"<span style='color:{ui.site_color(sid)}'>●</span>  <b>{names[sid]}</b>",
-                showarrow=True, arrowcolor=ui.site_color(sid), arrowwidth=2, arrowhead=6, arrowsize=0.8,
-                startstandoff=0, standoff=4, ax=int(ox), ay=int(-oy),
-                bgcolor="rgba(6,20,36,0.82)", bordercolor=ui.site_color(sid), borderwidth=1.5, borderpad=8,
+                x=float(anchor[0]), y=float(anchor[1]), z=float(anchor[2]),
+                text=f"<span style='color:{col}'>●</span>  <b>{names[sid]}</b>", showarrow=False,
+                xanchor="center", yanchor="middle",
+                bgcolor="rgba(6,20,36,0.82)", bordercolor=col, borderwidth=1.5, borderpad=8,
                 font=dict(color="#F2FAFD", size=13.5, family=ui.FONT),
                 hovertext=(f"<b>{names[sid]}</b><br>{wrap(ABOUT.get(sid, ''))} Elevation "
                            f"{srow.loc[sid, 'height_m']:+,.0f} m.<br><br>{wrap(WHY)}"),
-                hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor=ui.site_color(sid),
+                hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor=col,
                                 font=dict(color="#E2EEF3", size=13, family=ui.FONT))))
-        L = 1.08 * ui.R_MOON_KM
+        L = 1.22 * ui.R_MOON_KM                                     # room for the label ring above the pole
+        ks = 1.08 / 1.22                                            # keep the same framing as before
         ax = dict(visible=False, range=[-L, L])
         fig.update_layout(height=800, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                           showlegend=False, uirevision=f"home-globe-{rev}", hoverlabel=dict(align="left"),
                           scene=dict(bgcolor="rgba(0,0,0,0)", aspectmode="cube", xaxis=ax, yaxis=ax, zaxis=ax,
                                      dragmode="orbit", annotations=anns,
-                                     camera=dict(center=dict(zip("xyz", map(float, center + up * CAM["lift"]))),
-                                                 eye=dict(zip("xyz", map(float, eye + up * CAM["lift"]))),
+                                     camera=dict(center=dict(zip("xyz", map(float, (center + up * CAM["lift"]) * ks))),
+                                                 eye=dict(zip("xyz", map(float, (eye + up * CAM["lift"]) * ks))),
                                                  up=dict(zip("xyz", map(float, up))))))
         return fig, label_colors
 
