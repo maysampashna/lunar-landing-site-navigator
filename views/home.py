@@ -141,8 +141,46 @@ else:
     CAM = dict(lat=-52.0, dist=0.70, depth=0.43)     # picture-like start: across the pole, horizon on top
     HOME_EXAG = 3.0
 
+    @st.cache_resource
+    def home_mesh(exag: float):
+        """One seamless south-polar surface (LOLA 60°S cap + finer 80°S site region, tapered to the sphere at
+        the rim) plus a plain sphere for the rest of the Moon — no overlapping pieces, so no gaps."""
+        t = ui.terrain3d()
+        R = ui.R_MOON_KM
+        rim = 2 * R * np.tan(np.radians(15.0))                       # 60°S in polar-stereographic km
+
+        def bilinear(grid, ulx, uly, cell, X, Y):
+            n0, n1 = grid.shape
+            fx = (X - ulx) / cell - 0.5; fy = (uly - Y) / cell - 0.5
+            x0 = np.clip(np.floor(fx).astype(int), 0, n1 - 2); y0 = np.clip(np.floor(fy).astype(int), 0, n0 - 2)
+            ax_ = np.clip(fx - x0, 0, 1); ay_ = np.clip(fy - y0, 0, 1)
+            return (grid[y0, x0] * (1 - ax_) * (1 - ay_) + grid[y0, x0 + 1] * ax_ * (1 - ay_)
+                    + grid[y0 + 1, x0] * (1 - ax_) * ay_ + grid[y0 + 1, x0 + 1] * ax_ * ay_)
+
+        rr = np.linspace(0.0, rim, 190) ** 1.0
+        th = np.radians(np.linspace(0.0, 360.0, 421))
+        RR, TH = np.meshgrid(rr, th, indexing="ij")                     # round grid: the edge is a clean circle
+        X, Y = RR * np.sin(TH), RR * np.cos(TH)
+        cap = t["cap"].astype(float)
+        h = bilinear(cap, *(t["cap_ul"] / 1000.0), X, Y)
+        rx0, ry0, rc = t["region_ul"] / 1000.0
+        reg = t["region"].astype(float)
+        span = reg.shape[0] * rc
+        edge = np.minimum.reduce([X - rx0, rx0 + span - X, ry0 - Y, Y - (ry0 - span)])
+        wr = np.clip(edge / 25.0, 0, 1)                                 # blend the finer region in over 25 km
+        h = np.where(wr > 0, (1 - wr) * h + wr * bilinear(reg, rx0, ry0, rc, X, Y), h)
+        rho = np.hypot(X, Y)
+        taper = np.clip((rim - rho) / 160.0, 0, 1)
+        taper = taper * taper * (3 - 2 * taper)                         # smoothstep to zero height at 60°S
+        h = h * taper
+        cap_xyz = ui._polar_xyz(X, Y, h, exag)
+        la, lo = np.meshgrid(np.linspace(-60.6, 90, 77), np.linspace(0, 360, 145), indexing="ij")
+        sphere = ui._latlon_xyz(la, lo, R - 0.4)                       # tucks just under the cap's rim
+        r2 = lambda a: tuple(np.round(v, 1) for v in a)                # noqa: E731
+        return r2(sphere), r2(cap_xyz)
+
     def home_globe(rev):
-        sphere, capxyz, regxyz = ui._globe_mesh(HOME_EXAG)
+        sphere, capxyz = home_mesh(HOME_EXAG)
         pole_u = np.array([0.0, 0.0, -1.0])
         center = pole_u * CAM["depth"]                                  # pivot inside the Moon, under the pole
         eye = np.array(ui._latlon_xyz(CAM["lat"], 165.0, 1.0)) * CAM["dist"]
@@ -166,7 +204,7 @@ else:
             return 0.55 + 0.17 * out
 
         fig = go.Figure()
-        for (x, y, z) in (sphere, capxyz, regxyz):
+        for (x, y, z) in (sphere, capxyz):
             fig.add_trace(go.Surface(x=x, y=y, z=z, surfacecolor=np.clip(mottle(np.shape(z)), 0, 1), cmin=0, cmax=1,
                                      colorscale=moon, showscale=False, hoverinfo="skip", lighting=lit,
                                      lightposition=light))
@@ -175,7 +213,8 @@ else:
                                       ui.R_MOON_KM + srow.loc[ids, "height_m"].astype(float).values / 1000
                                       * HOME_EXAG + 6)).T
         fig.add_trace(go.Scatter3d(x=pts[:, 0], y=pts[:, 1], z=pts[:, 2], mode="markers", hoverinfo="skip",
-                                   marker=dict(size=7, color="#E6FCFF", line=dict(color="#50DCFF", width=4))))
+                                   marker=dict(size=7, color="#F4FBFF",
+                                               line=dict(color=[ui.site_color(i) for i in ids], width=5))))
         sx_, sy_ = pts @ right, pts @ up                              # screen-plane coordinates (km)
         order = np.argsort(sx_)                                        # left → right on screen
         n_ = len(order)
@@ -186,13 +225,13 @@ else:
             oy = 62 + 40 * [0, 2, 1, 3][rank % 4]
             anns.append(dict(
                 x=float(pts[k, 0]), y=float(pts[k, 1]), z=float(pts[k, 2]), text=f"<b>{names[sid]}</b>",
-                showarrow=True, arrowcolor="rgba(110,225,255,0.85)", arrowwidth=1.5, arrowhead=6, arrowsize=0.8,
+                showarrow=True, arrowcolor=ui.site_color(sid), arrowwidth=2, arrowhead=6, arrowsize=0.8,
                 startstandoff=0, standoff=4, ax=int(ox), ay=int(-oy),
-                bgcolor="rgba(4,18,32,0.88)", bordercolor="rgba(110,225,255,0.9)", borderwidth=1, borderpad=7,
+                bgcolor="rgba(4,18,32,0.90)", bordercolor=ui.site_color(sid), borderwidth=2, borderpad=7,
                 font=dict(color="#EAF7FC", size=13, family=ui.FONT),
                 hovertext=(f"<b>{names[sid]}</b><br>{wrap(ABOUT.get(sid, ''))} Elevation "
                            f"{srow.loc[sid, 'height_m']:+,.0f} m.<br><br>{wrap(WHY)}"),
-                hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor="#6EE1FF",
+                hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor=ui.site_color(sid),
                                 font=dict(color="#E2EEF3", size=13, family=ui.FONT))))
         L = 1.08 * ui.R_MOON_KM
         ax = dict(visible=False, range=[-L, L])
