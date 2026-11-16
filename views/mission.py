@@ -40,7 +40,7 @@ if st.session_state["m_sites"] and st.session_state.get("m_site") not in st.sess
 ui.banner("space_dashboard", "Mission Dashboard",
           "One control panel for sites, landing time and stay — every view below updates together.")
 
-col_vis, col_ctl = st.columns([3.1, 1], gap="medium")
+col_map, col_ctl = st.columns([2.2, 1], gap="medium")
 
 # ================================================================== the single control panel
 with col_ctl:
@@ -150,7 +150,7 @@ with col_ctl:
             f'Earth El {f0.earth_el_deg:+.2f}° (clears {f0.earth_el_deg - f0.horizon_at_earth_deg:+.2f}°)</div></div>',
             unsafe_allow_html=True)
 
-# ================================================================== LAYER 1 — 3D / panorama / sky chart
+# ------------------------------------------------------------------ data for the station views
 w_f = live.fine_visibility(srows.loc[focus], hp, start, end_mission, params, step_min=60).reset_index(drop=True)
 tt_f = pd.DatetimeIndex(w_f.time_utc)
 idx = int(np.clip(tt_f.searchsorted(t_sel), 0, len(tt_f) - 1))
@@ -173,6 +173,37 @@ def earth_marker(row):
     return dict(size=20, symbol="circle", color=ui.EARTH, line=dict(color="white", width=1.5))
 
 
+# ================================================================== LAYER 1 — all stations on the map
+with col_map:
+    with st.container(key="card_map"):
+        v_, c_ = st.columns([0.7, 1.6], vertical_alignment="center")
+        view = v_.segmented_control("View", ["2D", "3D Moon"], default="2D", label_visibility="collapsed") or "2D"
+        color_by = c_.segmented_control("Colour", ["At selected time", "Mission rating"], default="At selected time",
+                                        label_visibility="collapsed")
+        stat_ = status if color_by != "Mission rating" else None
+        if view == "3D Moon" and ui.terrain3d() is not None:
+            gview = st.segmented_control("Globe view", ["Focus site", "All sites", "Whole Moon"], default="All sites",
+                                         label_visibility="collapsed") or "All sites"
+            sun = ui.sun_vector(srows.loc[focus, "lat_deg"], srows.loc[focus, "lon_deg"], f0.sun_az_deg, f0.sun_el_deg)
+            st.plotly_chart(ui.moon_globe(chosen, sun_vec=sun, status=stat_, scores=worst.to_dict(), highlight=focus,
+                                          view=gview, height=600),
+                            width="stretch", config={"displaylogo": False, "scrollZoom": True,
+                                                     "modeBarButtonsToRemove": ["toImage"]})
+        else:
+            st.plotly_chart(ui.south_pole_map(chosen, worst.to_dict(), height=640, highlight=focus, status=stat_),
+                            width="stretch", config=ui.MAP_CONFIG, on_select="rerun", selection_mode="points",
+                            key="db_map")
+        legend = (" ".join(ui.chip(l_, c2) for l_, c2 in ui.STATUS.values()) if stat_ is not None else
+                  " ".join(ui.chip(f"{l_} {r_}", c2) for l_, r_, c2 in
+                           [("Excellent", "≥90", "#3DDC97"), ("Good", "70–89", "#4C8DFF"),
+                            ("Fair", "40–69", "#FFB02E"), ("Poor", "<40", "#FF6B8B")]))
+        st.markdown(legend + '<div style="color:#8FA4B0;font-size:0.8rem;margin-top:4px">'
+                    + ("Drag to rotate, scroll to zoom · lit by the Sun at the selected time · LOLA terrain on the polar cap (×5)" if view == "3D Moon" else
+                       "Click a site to show it in 3D · drag to move, +/− to zoom") + '</div>', unsafe_allow_html=True)
+
+
+# ================================================================== LAYER 2 — station view + mission clock
+col_vis, col_clock = st.columns([2.2, 1], gap="medium")
 with col_vis:
     with st.container(key="card_vis"):
         tab3d, tabpan, tabsky = st.tabs([":material/view_in_ar: 3D Observer View", ":material/panorama: Panorama",
@@ -241,35 +272,6 @@ with col_vis:
                                                          color="#7D879C", angle=90, tickfont=dict(size=9))))
             st.plotly_chart(ui.style_fig(fig, 560), width="stretch", config={"displayModeBar": False})
             st.caption("Looking straight up: elevation increases toward the centre; tracks fade light → dark over the stay.")
-
-# ================================================================== LAYER 2 — map + mission clock
-col_map, col_clock = st.columns([1.45, 1], gap="medium")
-with col_map:
-    with st.container(key="card_map"):
-        v_, c_ = st.columns([0.7, 1.6], vertical_alignment="center")
-        view = v_.segmented_control("View", ["2D", "3D Moon"], default="2D", label_visibility="collapsed") or "2D"
-        color_by = c_.segmented_control("Colour", ["At selected time", "Mission rating"], default="At selected time",
-                                        label_visibility="collapsed")
-        stat_ = status if color_by != "Mission rating" else None
-        if view == "3D Moon" and ui.terrain3d() is not None:
-            gview = st.segmented_control("Globe view", ["Focus site", "All sites", "Whole Moon"], default="All sites",
-                                         label_visibility="collapsed") or "All sites"
-            sun = ui.sun_vector(srows.loc[focus, "lat_deg"], srows.loc[focus, "lon_deg"], f0.sun_az_deg, f0.sun_el_deg)
-            st.plotly_chart(ui.moon_globe(chosen, sun_vec=sun, status=stat_, scores=worst.to_dict(), highlight=focus,
-                                          view=gview, height=440),
-                            width="stretch", config={"displaylogo": False, "scrollZoom": True,
-                                                     "modeBarButtonsToRemove": ["toImage"]})
-        else:
-            st.plotly_chart(ui.south_pole_map(chosen, worst.to_dict(), height=470, highlight=focus, status=stat_),
-                            width="stretch", config=ui.MAP_CONFIG, on_select="rerun", selection_mode="points",
-                            key="db_map")
-        legend = (" ".join(ui.chip(l_, c2) for l_, c2 in ui.STATUS.values()) if stat_ is not None else
-                  " ".join(ui.chip(f"{l_} {r_}", c2) for l_, r_, c2 in
-                           [("Excellent", "≥90", "#3DDC97"), ("Good", "70–89", "#4C8DFF"),
-                            ("Fair", "40–69", "#FFB02E"), ("Poor", "<40", "#FF6B8B")]))
-        st.markdown(legend + '<div style="color:#8FA4B0;font-size:0.8rem;margin-top:4px">'
-                    + ("Drag to rotate, scroll to zoom · lit by the Sun at the selected time · LOLA terrain on the polar cap (×5)" if view == "3D Moon" else
-                       "Click a site to show it in 3D · drag to move, +/− to zoom") + '</div>', unsafe_allow_html=True)
 
 with col_clock:
     with st.container(key="card_clock"):
@@ -350,10 +352,9 @@ st.markdown(
     'not a landing-safety recommendation.</div></div></div>', unsafe_allow_html=True)
 
 # ================================================================== LAYER 4 — analysis (compact tabs)
-tabs = st.tabs([":material/table_chart: Site Comparison", ":material/schedule: Landing-Delay Risk",
-                ":material/battery_charging_full: Battery & Power", ":material/cell_tower: DSN Geometry",
-                ":material/timeline: Visibility Timeline"])
-with tabs[0]:
+st.markdown(f'<div class="lln-sec">{ui.mi("leaderboard")}Station ranking<span class="lln-tag">over the full stay</span>'
+            '</div>', unsafe_allow_html=True)
+with st.container():
     rows = []
     for sid in order:
         r = base.loc[sid]
@@ -375,8 +376,11 @@ with tabs[0]:
         '<th class="n" title="Illustrative battery nameplate for the constant load">Storage (kWh)</th>'
         '<th class="n" title="Lowest score across the landing-delay scenarios">Worst-case score</th>'
         '<th>Rating</th></tr>' + "".join(rows) + "</table>", unsafe_allow_html=True)
-    st.caption("Equal scores share a rank (1=).")
-with tabs[1]:
+    st.caption("Equal scores share a rank (1=). \"Now\" = Sun / Earth at the selected time.")
+st.write("")
+tabs = st.tabs([":material/schedule: Landing-Delay Risk", ":material/battery_charging_full: Battery & Power",
+                ":material/cell_tower: DSN Geometry", ":material/timeline: Visibility Timeline"])
+with tabs[0]:
     fig = go.Figure()
     xs = [("0 h" if h == 0 else f"+{h} h") for h in shifts]
     for sid in order:
@@ -392,7 +396,7 @@ with tabs[1]:
                       margin=dict(l=10, r=10, t=10, b=10))
     st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     st.caption(f"★ Highest worst-case score: {' & '.join(names[s] for s in winners)} ({top_score}).")
-with tabs[2]:
+with tabs[1]:
     kwh = [base.loc[s, "required_nameplate_kwh"] for s in order]
     fig = go.Figure(go.Bar(x=[names[s] for s in order], y=kwh, marker_color=ui.SUN, opacity=0.9,
                            text=[f"{v:.0f} kWh" for v in kwh], textposition="outside", width=0.5))
@@ -400,7 +404,7 @@ with tabs[2]:
     st.plotly_chart(ui.style_fig(fig, 280), width="stretch", config={"displayModeBar": False})
     st.caption(f"Illustrative: constant {load:.0f} W load, {area:g} m² Sun-tracking array at {eff:.0%}, 95 % "
                "charge/discharge efficiency, 80 % depth of discharge. Not a flight design.")
-with tabs[3]:
+with tabs[2]:
     fig = go.Figure()
     for name, c in zip(DSN_COMPLEXES, ["#FFB02E", "#B57BFF", "#3DDC97"]):
         fig.add_trace(go.Scatter(x=dsn.time_utc, y=dsn[f"dsn_{name.lower()}_el"], name=name, mode="lines",
@@ -415,7 +419,7 @@ with tabs[3]:
                       margin=dict(l=10, r=10, t=26, b=10))
     st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     st.caption("Moon elevation at Goldstone, Madrid and Canberra: potential geometric access, not scheduled antenna time.")
-with tabs[4]:
+with tabs[3]:
     segs = []
     for sid in order:
         w0 = finder.window(vis[sid], start, dur_days * 24)
