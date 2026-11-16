@@ -77,40 +77,44 @@ k[3].markdown(ui.kcard("database", "Sites covered" + tip(
 st.caption("34 automated tests pass. Open a section below for the full details.")
 
 # ------------------------------------------------------------------ detail sections
+def intro(text):
+    st.markdown(f'<div style="color:#C9D8E0;font-size:0.92rem;margin-bottom:8px">{text}</div>', unsafe_allow_html=True)
+
+
 with st.expander("Sun and Earth positions vs NASA JPL Horizons", icon=":material/public:"):
+    intro("At random times we asked NASA's JPL Horizons service where the Sun and Earth are in the sky from each "
+          "site, and compared it with our own calculation. Smaller numbers are better; all are far below 0.001°.")
     if v:
-        rows = [{"site": names.get(sid, sid), "body": body, "samples": r["n"],
-                 "max |ΔEl| (°)": r["max_abs_del_deg"], "median |ΔEl| (°)": r["median_abs_del_deg"],
-                 "max |ΔAz·cos El| (°)": r["max_abs_daz_sky_deg"]}
+        rows = [{"Site": names.get(sid, sid), "Body": body.title(), "Times checked": r["n"],
+                 "Largest height error (°)": round(r["max_abs_del_deg"], 6),
+                 "Typical height error (°)": round(r["median_abs_del_deg"], 6),
+                 "Largest direction error (°)": round(r["max_abs_daz_sky_deg"], 6)}
                 for sid, bodies in v["sites"].items() for body, r in bodies.items()]
         st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-        st.caption(f"Our Skyfield + NASA/JPL SPICE topocentric azimuth/elevation compared with JPL Horizons at random "
-                   f"times. Generated {v.get('generated_utc', '?')}.")
     else:
         st.warning("Not yet run. Run `python scripts/validate_horizons.py` (needs internet).")
 
 with st.expander("Physics checks and automated tests", icon=":material/science:"):
-    st.dataframe(pd.DataFrame(checks), width="stretch", hide_index=True)
-    st.caption("Unit tests (tests/) cover terrain orientation with synthetic mountains at known bearings from several "
-               "longitudes, eclipse geometry, the battery model against a hand calculation, score-weight "
-               "normalisation and DSN gating.")
+    intro("Simple tests the results must pass. The Sun can never rise higher than geometry allows at each site, and "
+          "two known total lunar eclipses must be found on the right dates.")
+    st.dataframe(pd.DataFrame([{"Check": c["check"], "Expected": c["expected"], "Result": c["result"],
+                                "Pass": "✅" if c["pass"] else "❌"} for c in checks]),
+                 width="stretch", hide_index=True)
+    st.caption("34 automated code tests also pass (terrain direction, eclipses, battery model, scoring, DSN).")
 
 with st.expander("Terrain and site locations", icon=":material/terrain:"):
+    intro("Each site is one point inside its NASA region. Its skyline comes from NASA LOLA terrain out to 150 km.")
     trows = []
-    for _, s in sites.iterrows():
-        hp = ui.horizon(s.site_id)
-        trows.append({"site": s["name"], "lat": s.lat_deg, "lon": s.lon_deg,
-                      "terrain": ui.terrain_status(s.site_id),
-                      "rays incomplete (%)": None if hp is None else round(100 * hp.incomplete.mean(), 1),
-                      "min coverage (km)": None if hp is None else round(float(np.nanmin(hp.coverage_km)), 1),
-                      "site height (m)": None if hp is None else round(hp.site_height_m, 1),
-                      "provisional point": s.provisional, "point source": s.source})
+    for _, s_ in sites.iterrows():
+        hp = ui.horizon(s_.site_id)
+        trows.append({"Site": s_["name"], "Latitude (°)": round(s_.lat_deg, 3), "Longitude (°)": round(s_.lon_deg, 3),
+                      "Elevation (m)": None if hp is None else round(hp.site_height_m),
+                      "Terrain": "NASA LOLA" if ui.terrain_status(s_.site_id) == "real" else ui.terrain_status(s_.site_id),
+                      "Skyline complete (%)": None if hp is None else round(100 - 100 * hp.incomplete.mean(), 1)})
     st.dataframe(pd.DataFrame(trows), width="stretch", hide_index=True)
-    st.caption("Horizons: LOLA 80 m DEM near field + 240 m far field to 150 km, observer 2 m above the surface, rays "
-               "along local geographic bearings. Missing terrain is flagged; results it could change are "
-               "'uncertain' and excluded from confident rankings.")
 
 with st.expander("Data sources and assumptions", icon=":material/database:"):
+    intro("Every input is public NASA or USGS data.")
     st.markdown("""
 | Data | Source | Used for |
 |---|---|---|
@@ -122,11 +126,12 @@ with st.expander("Data sources and assumptions", icon=":material/database:"):
 | JPL Horizons API | NASA/JPL SSD — [ssd-api.jpl.nasa.gov](https://ssd-api.jpl.nasa.gov/doc/horizons.html) | Ephemeris validation only |
 """)
     st.markdown("""
-- **Sunlit** when ≥ 50 % of the Sun's disc is above the terrain (adjustable). **Potential DTE** when Earth's centre is above terrain + mask, and (optionally) a DSN complex sees the Moon above 10°.
-- **Eclipses**: Earth covering the Sun's disc reduces sunlight and power (circle-overlap model).
-- **Power**: Sun-tracking array, constant load, 95 % charge/discharge efficiency, 80 % depth of discharge — illustrative only.
-- **Score**: user-weighted preference (positive weights normalised), not a safety rating. Worst case = lowest score over the surface-start shifts.
-- Best Date Finder scans hourly data; the Mission Dashboard recomputes at 10 minutes.
+**Main assumptions**
+- **Sunlight:** a site counts as sunlit when at least half of the Sun is above the hills (adjustable).
+- **Earth contact:** Earth is above the hills and a NASA DSN dish sees the Moon above 10° (adjustable).
+- **Eclipses:** when Earth blocks the Sun, sunlight and power drop.
+- **Battery:** a simple 1 kW lander model — an illustration, not a flight design.
+- **Score:** a planning preference, not a safety rating.
 """)
 
 with st.expander("Limitations and use of AI", icon=":material/rule:"):

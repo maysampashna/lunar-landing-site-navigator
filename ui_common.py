@@ -472,6 +472,9 @@ def style_fig(fig, height=360, title=None):
         fig.update_layout(margin=dict(l=10, r=10, t=44, b=60))
     fig.update_xaxes(gridcolor="#1E2742", zerolinecolor="#2A3556")
     fig.update_yaxes(gridcolor="#1E2742", zerolinecolor="#2A3556")
+    fig.update_xaxes(fixedrange=True)
+    fig.update_yaxes(fixedrange=True)
+    fig.update_layout(dragmode=False)
     return fig
 
 

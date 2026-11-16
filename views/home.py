@@ -249,6 +249,7 @@ else:
         RING, STEM, LIFT = LABEL["ring"], LABEL["stem"], LABEL["lift"]
         cam_h = eye - (eye @ nrm) * nrm; cam_h /= np.linalg.norm(cam_h)     # toward the starting camera
         anns, label_colors = [], []
+        hov_x, hov_c, hov_t = [], [], []
         for rank, k in enumerate(order):
             sid = ids[k]
             col = ui.site_color(sid)
@@ -269,10 +270,15 @@ else:
                 xanchor="center", yanchor="middle",
                 bgcolor="rgba(6,20,36,0.82)", bordercolor=col, borderwidth=1.5, borderpad=8,
                 font=dict(color="#F2FAFD", size=13.5, family=ui.FONT),
-                hovertext=(f"<b>{names[sid]}</b><br><span style='color:{col}'>{wrap(where(sid), 52)}</span>"
-                           f"<br><br>{wrap(ABOUT.get(sid, ''), 52)}<br><br><i>{wrap(WHY, 52)}</i>"),
-                hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor=col,
-                                font=dict(color="#E2EEF3", size=13, family=ui.FONT))))
+))
+            hov_x.append(anchor); hov_c.append(col)
+            hov_t.append(f"<b>{names[sid]}</b><br><span style='color:{col}'>{wrap(where(sid), 52)}</span>"
+                         f"<br><br>{wrap(ABOUT.get(sid, ''), 52)}<br><br><i>{wrap(WHY, 52)}</i>")
+        hx = np.array(hov_x)
+        fig.add_trace(go.Scatter3d(x=hx[:, 0], y=hx[:, 1], z=hx[:, 2], mode="markers", hovertext=hov_t,
+                                   hoverinfo="text", marker=dict(size=26, color="#06182A", opacity=0.01),
+                                   hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor=hov_c, align="left",
+                                                   font=dict(color="#E2EEF3", size=13, family=ui.FONT))))
         L = 1.22 * ui.R_MOON_KM                                     # room for the label ring above the pole
         ks = 1.08 / 1.22                                            # keep the same framing as before
         ax = dict(visible=False, range=[-L, L])
