@@ -138,7 +138,7 @@ else:
                 line = f"{line} {w}".strip()
         return "<br>".join(out + [line])
 
-    CAM = dict(lat=-52.0, dist=0.70, depth=0.43)     # picture-like start: across the pole, horizon on top
+    CAM = dict(lat=-52.0, dist=0.70, depth=0.43, lift=0.045)     # picture-like start: across the pole, horizon on top
     HOME_EXAG = 3.0
 
     @st.cache_resource
@@ -221,8 +221,8 @@ else:
         anns = []
         for rank, k in enumerate(order):
             sid = ids[k]
-            ox = (rank - (n_ - 1) / 2) * 34
-            oy = 62 + 40 * [0, 2, 1, 3][rank % 4]
+            ox = (rank - (n_ - 1) / 2) * 46
+            oy = 50 + 36 * [0, 2, 1, 3][rank % 4]
             anns.append(dict(
                 x=float(pts[k, 0]), y=float(pts[k, 1]), z=float(pts[k, 2]), text=f"<b>{names[sid]}</b>",
                 showarrow=True, arrowcolor=ui.site_color(sid), arrowwidth=2, arrowhead=6, arrowsize=0.8,
@@ -239,8 +239,8 @@ else:
                           showlegend=False, uirevision=f"home-globe-{rev}", hoverlabel=dict(align="left"),
                           scene=dict(bgcolor="rgba(0,0,0,0)", aspectmode="cube", xaxis=ax, yaxis=ax, zaxis=ax,
                                      dragmode="orbit", annotations=anns,
-                                     camera=dict(center=dict(zip("xyz", map(float, center))),
-                                                 eye=dict(zip("xyz", map(float, eye))),
+                                     camera=dict(center=dict(zip("xyz", map(float, center + up * CAM["lift"]))),
+                                                 eye=dict(zip("xyz", map(float, eye + up * CAM["lift"]))),
                                                  up=dict(zip("xyz", map(float, up))))))
         return fig
 
