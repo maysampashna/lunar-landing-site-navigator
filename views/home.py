@@ -81,7 +81,7 @@ st.markdown(f"""<style>
 [data-testid="stAppViewContainer"] {{background:#02060C url("{stars}") center / cover fixed;}}
 .lln-h {{position:relative; width:100%; aspect-ratio: 2400 / 1350; border-radius:18px;
    background:url("{hero}") center / cover no-repeat; box-shadow:0 0 0 1px rgba(80,220,255,0.18), 0 20px 60px rgba(0,0,0,0.6);}}
-.lln-h .ttl {{position:absolute; top:3.2%; left:50%; transform:translateX(-50%); width:min(70%, 900px);
+.lln-h .ttl {{position:absolute; top:1.6%; left:50%; transform:translateX(-50%); width:min(88%, 1200px);
    padding:14px 34px 12px 34px; border-radius:18px; text-align:center;
    background:linear-gradient(180deg, rgba(8,28,44,0.88), rgba(5,18,30,0.88));
    border:1.5px solid rgba(80,220,255,0.75); box-shadow:0 0 22px rgba(80,220,255,0.35), inset 0 0 18px rgba(80,220,255,0.10);}}
@@ -128,6 +128,6 @@ st.markdown(
     f'<span class="lb">Data Validation</span><span class="ar">{ui.mi("arrow_forward", 28, "#2DD4BF")}</span></a>'
     '</div></div>'
     '<div class="lln-credit">Rendered from NASA LOLA terrain (Lunar Reconnaissance Orbiter) · sites: USGS Artemis III '
-    'regions · Sun and Earth placement illustrative</div>', unsafe_allow_html=True)
+    'regions · Sun placement illustrative</div>', unsafe_allow_html=True)
 
 ui.footer(link=False)

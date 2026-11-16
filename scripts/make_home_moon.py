@@ -140,7 +140,7 @@ def main():
         zf = vec @ fwd
         return (vec @ right) / zf / tanf * (W / 2) + W / 2, H / 2 - ((vec @ up) / zf - AIM) / tanf * (W / 2), zf > 0
 
-    # Sun glow (upper left) and a small Earth near the horizon (upper right) — illustrative
+    # Sun glow (upper left) — illustrative
     glow = Image.new("RGB", (W, H), (0, 0, 0)); gd = ImageDraw.Draw(glow)
     sx_, sy_, _ = proj(sun * 1e6)
     sx_, sy_ = float(np.clip(sx_, 60, W * 0.3)), float(np.clip(sy_, 80, H * 0.3))
@@ -149,18 +149,6 @@ def main():
     glow = glow.filter(ImageFilter.GaussianBlur(38))
     out = Image.fromarray(np.clip(np.asarray(out, float) + np.asarray(glow, float), 0, 255).astype(np.uint8))
     ImageDraw.Draw(out).ellipse([sx_ - 22, sy_ - 22, sx_ + 22, sy_ + 22], fill=(255, 251, 240))
-    ex_, ey_, er = W * 0.905, H * 0.30, 74
-    yy2, xx2 = np.mgrid[0:H, 0:W]
-    dd = np.hypot(xx2 - ex_, yy2 - ey_) / er
-    disc_ = dd <= 1
-    zz = np.sqrt(np.clip(1 - dd ** 2, 0, 1))
-    lit = np.clip(((xx2 - ex_) / er) * -0.75 + zz * 0.55 + ((ey_ - yy2) / er) * 0.2, 0, 1)
-    earth = np.stack([0.20 + 0.55 * lit, 0.38 + 0.50 * lit, 0.75 + 0.25 * lit], -1) * (0.25 + 0.75 * lit[..., None])
-    arr = np.asarray(out, float) / 255
-    halo = np.clip(1.25 - dd, 0, 0.25)[..., None] * np.array([0.25, 0.45, 0.9]) * (~disc_)[..., None]
-    arr = np.where(disc_[..., None], earth, arr + halo)
-    out = Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8))
-
     # site markers and labels with a soft cyan glow
     pts = []
     for s_ in sites:
