@@ -21,26 +21,44 @@ srow = ui.sites_df().set_index("site_id")
 
 # what each site is, and why its region is a candidate (NASA gave one shared rationale for all nine regions)
 ABOUT = {
-    "peak_near_cabeus_b": "A high peak beside Cabeus B crater, close to Cabeus crater, where NASA's LCROSS impact "
-                          "in 2009 detected water.",
-    "haworth": "A site on the edge of Haworth crater, one of the large, permanently shadowed craters near the "
-               "south pole.",
-    "malapert_massif": "A broad mountain massif that rises among the highest ground near the south pole.",
-    "mons_mouton": "A wide, flat-topped mountain named in honour of NASA mathematician Melba Mouton.",
-    "nobile_rim_1": "A site on the rim of Nobile, a large crater in the south polar region.",
-    "nobile_rim_2": "A second site on the rim of Nobile crater, on a different stretch of the rim.",
-    "de_gerlache_rim_2": "A site on the rim of de Gerlache crater, right next to Shackleton crater and the pole.",
-    "slater_plain": "A comparatively smooth plain near Slater crater.",
+    "peak_near_cabeus_b": "A high peak overlooking Cabeus crater, where NASA's LCROSS impactor detected water in "
+                          "2009. Its height lifts it above much of the surrounding shadow while keeping it close "
+                          "to some of the most promising ice deposits at the pole.",
+    "haworth": "Beside Haworth, a large crater whose floor never sees sunlight. Landing here would put crews within "
+               "reach of one of the south pole's permanently shadowed, potentially ice-bearing craters.",
+    "malapert_massif": "One of the highest summits near the pole, on the Earth-facing side of the Moon at almost "
+                       "exactly 0° longitude, which helps keep Earth above the horizon for communication. "
+                       "Intuitive Machines' IM-1 lander touched down near Malapert A crater in February 2024.",
+    "mons_mouton": "A flat-topped mountain with a broad summit plateau, named in 2022 after NASA mathematician "
+                   "Melba Roy Mouton. It was the planned destination of NASA's VIPER rover, and Intuitive "
+                   "Machines' Athena lander touched down on it in March 2025.",
+    "nobile_rim_1": "On the rim of Nobile crater, right next to the Mons Mouton plateau. The rim crest stands high "
+                    "above the dark crater floor, combining good sunlight and line of sight with easy access to "
+                    "shadowed terrain.",
+    "nobile_rim_2": "A lower stretch of Nobile's rim on its far, eastern side and the farthest site from the pole. "
+                    "Comparing it with Nobile Rim 1 shows how much elevation alone changes sunlight and Earth "
+                    "visibility.",
+    "de_gerlache_rim_2": "The closest site to the pole, on the rim of de Gerlache crater next to Shackleton. The "
+                         "ridges between these two craters are known for some of the longest periods of sunlight "
+                         "anywhere at the lunar south pole.",
+    "slater_plain": "A comparatively smooth, low plain near Slater crater, on the far-side hemisphere of the Moon. "
+                    "Smooth ground favours a safe touchdown, while its far-side position makes Earth contact "
+                    "a key question to check.",
 }
-WHY = ("NASA selected this region as one of nine Artemis III candidates in October 2024, using data from the Lunar "
-       "Reconnaissance Orbiter. The regions offer diverse geology, some of the Moon's oldest terrain, nearby cold "
-       "shadowed areas that may hold water ice, and flexible timing for the mission.")
+WHY = "One of NASA's nine Artemis III candidate regions (October 2024), chosen with Lunar Reconnaissance Orbiter data."
+
+
+def where(sid):
+    lat, lon, h = srow.loc[sid, "lat_deg"], srow.loc[sid, "lon_deg"], srow.loc[sid, "height_m"]
+    km = (90 - abs(lat)) * 3.14159265 / 180 * 1737.4
+    return (f"{abs(lat):.1f}°S · {abs(lon):.1f}°{'E' if lon >= 0 else 'W'} · about {km:,.0f} km from the pole · "
+            f"elevation {h:+,.0f} m")
 
 
 def tip(sid):
     h = srow.loc[sid, "height_m"] / 1000.0
     return (f'<div class="tip"><div class="tn">{names[sid]}</div>'
-            f'<div class="tx">{ABOUT.get(sid, "")} Elevation {srow.loc[sid, "height_m"]:+,.0f} m.</div>'
+            f'<div class="tf">{where(sid)}</div><div class="tx">{ABOUT.get(sid, "")}</div>'
             f'<div class="tx why">{WHY}</div></div>')
 
 
@@ -251,8 +269,8 @@ else:
                 xanchor="center", yanchor="middle",
                 bgcolor="rgba(6,20,36,0.82)", bordercolor=col, borderwidth=1.5, borderpad=8,
                 font=dict(color="#F2FAFD", size=13.5, family=ui.FONT),
-                hovertext=(f"<b>{names[sid]}</b><br>{wrap(ABOUT.get(sid, ''))} Elevation "
-                           f"{srow.loc[sid, 'height_m']:+,.0f} m.<br><br>{wrap(WHY)}"),
+                hovertext=(f"<b>{names[sid]}</b><br><span style='color:{col}'>{wrap(where(sid), 52)}</span>"
+                           f"<br><br>{wrap(ABOUT.get(sid, ''), 52)}<br><br><i>{wrap(WHY, 52)}</i>"),
                 hoverlabel=dict(bgcolor="rgba(4,14,26,0.96)", bordercolor=col,
                                 font=dict(color="#E2EEF3", size=13, family=ui.FONT))))
         L = 1.22 * ui.R_MOON_KM                                     # room for the label ring above the pole
