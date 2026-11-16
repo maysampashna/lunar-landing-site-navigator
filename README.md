@@ -16,7 +16,7 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 | Page | What you get |
 |---|---|
 | 🏠 **Home** | A rotatable 3D Moon with real NASA LOLA terrain on the south polar cap, the eight sites labelled (hover for what each site is and why its region was chosen), and buttons to the three pages |
-| 🚀 **Mission Dashboard** | One horizontal control panel (sites, site shown in 3D, landing date and hour, stay, selected time, advanced settings) drives everything: the **station ranking** (tie-aware, worst case over landing delays), a 3D observer view of the real terrain with the Sun and Earth, the 360° panorama and sky chart, a NASA-style mission clock with upcoming AOS/LOS and DSN events, and tabs for landing-delay risk, battery, **Deep Space Network** geometry and the visibility timeline |
+| 🚀 **Mission Dashboard** | One horizontal control panel (sites, site shown in 3D, landing date and hour, stay, selected time, advanced settings) drives everything: the **station ranking** (tie-aware, worst case over landing delays), a 3D observer view of the real terrain with the Sun and Earth, the 360° panorama and sky chart, then the visibility timeline, **Deep Space Network** geometry, battery and landing-delay risk one after another |
 | 📅 **Best Date Finder** | Best landing dates per site (2026–2031) with tie-aware ranks, one-click **Open in Mission Dashboard**, and a calendar heatmap |
 | ✅ **Data Validation** | Validation summary (scope of each check), JPL Horizons comparison, physics checks and tests, terrain status, data sources, limitations and AI-use statement |
 

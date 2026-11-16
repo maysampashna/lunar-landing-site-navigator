@@ -126,20 +126,6 @@ f0 = now_state[focus]
 hp = ui.horizon(focus)
 
 
-def next_events_for(sid, t_from):
-    w_ = vis[sid]
-    tt = pd.DatetimeIndex(w_.time_utc)
-    ic = int(tt.searchsorted(t_from, side="right")) - 1
-    out = []
-    for colname, on_txt, off_txt in (("sunlit", "Sunrise", "Sunset"), ("dte_visible", "AOS", "LOS")):
-        vals = w_[colname].to_numpy(bool)
-        if 0 <= ic < len(vals) - 1:
-            idx_ = np.flatnonzero(vals[ic + 1:] != vals[ic])
-            if len(idx_):
-                out.append((tt[ic + 1 + idx_[0]], off_txt if vals[ic] else on_txt))
-    return out
-
-
 # ================================================================== station ranking
 st.markdown(f'<div class="lln-sec">{ui.mi("leaderboard")}Station ranking<span class="lln-tag">over the full stay</span>'
             '</div>', unsafe_allow_html=True)
@@ -201,14 +187,13 @@ def earth_marker(row):
     return dict(size=20, symbol="circle", color=ui.EARTH, line=dict(color="white", width=1.5))
 
 
-# ================================================================== station view + mission clock
-col_vis, col_clock = st.columns([2.2, 1], gap="medium")
-with col_vis:
+# ================================================================== station views (full width)
+with st.container():
     with st.container(key="card_vis"):
         tab3d, tabpan, tabsky = st.tabs([":material/view_in_ar: 3D Observer View", ":material/panorama: Panorama",
                                          ":material/radar: Sky Chart"])
         with tab3d:
-            fig3 = ui.observer_3d(focus, f0, hp, exag=2.0, height=610)
+            fig3 = ui.observer_3d(focus, f0, hp, exag=2.0, height=680)
             if fig3 is None:
                 st.info("3D terrain tile not available for this site.")
             else:
@@ -272,76 +257,10 @@ with col_vis:
             st.plotly_chart(ui.style_fig(fig, 560), width="stretch", config={"displayModeBar": False})
             st.caption("Looking straight up: elevation increases toward the centre; tracks fade light → dark over the stay.")
 
-with col_clock:
-    with st.container(key="card_clock"):
-        ui.card_title("timer", "Mission Clock", "simulated mission time")
-        now_real = pd.Timestamp.now(tz="UTC")
-        st.markdown(f'<div class="lln-clock">{ui.doy(t_sel)}</div><div class="lln-clock-sub">Selected time · '
-                    f'MET {ui.met(t_sel, start)}<br>Houston {t_sel.tz_convert("America/Chicago"):%H:%M %Z} · '
-                    f'Actual now: {now_real:%Y-%j}T{now_real:%H:%M}Z</div>', unsafe_allow_html=True)
-        events = []
-        for sid in chosen:
-            for t_, lab_ in next_events_for(sid, t_sel):
-                events.append((t_, f"{names[sid]} – {lab_}", ui.SUN if lab_ in ("Sunrise", "Sunset") else ui.EARTH))
-        dd = dsn[dsn.time_utc >= t_sel]
-        if len(dd) > 1:
-            ch = np.flatnonzero(dd.dsn_best.to_numpy()[1:] != dd.dsn_best.to_numpy()[:-1])
-            if len(ch):
-                a1, b1 = dd.dsn_best.iloc[ch[0]], dd.dsn_best.iloc[ch[0] + 1]
-                events.append((dd.time_utc.iloc[ch[0] + 1], f"DSN {a1} → {b1}" if a1 and b1 else
-                               f"DSN gap begins ({a1})" if a1 else f"DSN resumes ({b1})", ui.GREY))
-        events.sort(key=lambda e: e[0])
-        st.markdown('<div class="lln-ct" style="font-size:0.98rem;margin-top:4px">'
-                    f'{ui.mi("format_list_bulleted")}<span>Upcoming events</span></div>'
-                    + "".join(f'<div class="lln-ev"><span class="d" style="background:{c}"></span>'
-                              f'<span class="tm">{ui.tminus(t, t_sel)}</span><span>{lab}</span></div>'
-                              for t, lab, c in events[:5])
-                    + ("" if events else '<div class="lln-ev">No changes before the end of the stay</div>'),
-                    unsafe_allow_html=True)
-
-# ================================================================== analysis tabs
-tabs = st.tabs([":material/schedule: Landing-Delay Risk", ":material/battery_charging_full: Battery & Power",
-                ":material/cell_tower: DSN Geometry", ":material/timeline: Visibility Timeline"])
-with tabs[0]:
-    fig = go.Figure()
-    xs = [("0 h" if h == 0 else f"+{h} h") for h in shifts]
-    for sid in order:
-        sc = table[table.site_id == sid].sort_values("shift_h")
-        win = sid in winners
-        fig.add_trace(go.Scatter(x=xs, y=sc.score, mode="lines+markers", name=names[sid] + ("  ★" if win else ""),
-                                 line=dict(color=ui.site_color(sid), width=4 if win else 2),
-                                 marker=dict(size=10 if win else 7), opacity=1 if win else 0.75))
-    fig.update_yaxes(range=[-3, 105], title="Score")
-    fig.update_xaxes(title="Landing delay")
-    fig = ui.style_fig(fig, 300)
-    fig.update_layout(legend=dict(orientation="v", yanchor="top", y=1, x=1.01, xanchor="left"),
-                      margin=dict(l=10, r=10, t=10, b=10))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-    st.caption(f"★ Highest worst-case score: {' & '.join(names[s] for s in winners)} ({top_score}).")
-with tabs[1]:
-    kwh = [base.loc[s, "required_nameplate_kwh"] for s in order]
-    fig = go.Figure(go.Bar(x=[names[s] for s in order], y=kwh, marker_color=ui.SUN, opacity=0.9,
-                           text=[f"{v:.0f} kWh" for v in kwh], textposition="outside", width=0.5))
-    fig.update_yaxes(title="Estimated storage (kWh)", range=[0, max(10, max(kwh)) * 1.2])
-    st.plotly_chart(ui.style_fig(fig, 280), width="stretch", config={"displayModeBar": False})
-    st.caption(f"Illustrative: constant {load:.0f} W load, {area:g} m² Sun-tracking array at {eff:.0%}, 95 % "
-               "charge/discharge efficiency, 80 % depth of discharge. Not a flight design.")
-with tabs[2]:
-    fig = go.Figure()
-    for name, c in zip(DSN_COMPLEXES, ["#FFB02E", "#B57BFF", "#3DDC97"]):
-        fig.add_trace(go.Scatter(x=dsn.time_utc, y=dsn[f"dsn_{name.lower()}_el"], name=name, mode="lines",
-                                 line=dict(color=c, width=2)))
-    fig.add_hline(y=dsn_mask, line=dict(color="#FF6B8B", dash="dash", width=1),
-                  annotation_text=f"mask {dsn_mask:.0f}°", annotation_position="bottom right")
-    fig.add_shape(type="line", x0=t_sel, x1=t_sel, y0=-5, y1=90, line=dict(color="white", width=1.5, dash="dot"))
-    fig.update_yaxes(range=[-5, 90], title="Moon elevation (°)")
-    fig.update_xaxes(range=[start, end_mission])
-    fig = ui.style_fig(fig, 260)
-    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"),
-                      margin=dict(l=10, r=10, t=26, b=10))
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-    st.caption("Moon elevation at Goldstone, Madrid and Canberra: potential geometric access, not scheduled antenna time.")
-with tabs[3]:
+# ================================================================== analysis, one section after another
+st.markdown(f'<div class="lln-sec">{ui.mi("timeline")}Visibility Timeline<span class="lln-tag">sunlight and Earth contact</span></div>',
+            unsafe_allow_html=True)
+with st.container(key="card_visibility"):
     segs = []
     for sid in order:
         w0 = finder.window(vis[sid], start, dur_days * 24)
@@ -364,5 +283,53 @@ with tabs[3]:
         fig.update_layout(legend_title_text="", bargap=0.35, margin=dict(l=10, r=10, t=26, b=10),
                           legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"))
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+
+st.markdown(f'<div class="lln-sec">{ui.mi("cell_tower")}DSN Geometry<span class="lln-tag">Goldstone · Madrid · Canberra</span></div>',
+            unsafe_allow_html=True)
+with st.container(key="card_dsn"):
+    fig = go.Figure()
+    for name, c in zip(DSN_COMPLEXES, ["#FFB02E", "#B57BFF", "#3DDC97"]):
+        fig.add_trace(go.Scatter(x=dsn.time_utc, y=dsn[f"dsn_{name.lower()}_el"], name=name, mode="lines",
+                                 line=dict(color=c, width=2)))
+    fig.add_hline(y=dsn_mask, line=dict(color="#FF6B8B", dash="dash", width=1),
+                  annotation_text=f"mask {dsn_mask:.0f}°", annotation_position="bottom right")
+    fig.add_shape(type="line", x0=t_sel, x1=t_sel, y0=-5, y1=90, line=dict(color="white", width=1.5, dash="dot"))
+    fig.update_yaxes(range=[-5, 90], title="Moon elevation (°)")
+    fig.update_xaxes(range=[start, end_mission])
+    fig = ui.style_fig(fig, 260)
+    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.0, x=1, xanchor="right"),
+                      margin=dict(l=10, r=10, t=26, b=10))
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.caption("Moon elevation at Goldstone, Madrid and Canberra: potential geometric access, not scheduled antenna time.")
+
+st.markdown(f'<div class="lln-sec">{ui.mi("battery_charging_full")}Battery &amp; Power<span class="lln-tag">illustrative</span></div>',
+            unsafe_allow_html=True)
+with st.container(key="card_battery"):
+    kwh = [base.loc[s, "required_nameplate_kwh"] for s in order]
+    fig = go.Figure(go.Bar(x=[names[s] for s in order], y=kwh, marker_color=ui.SUN, opacity=0.9,
+                           text=[f"{v:.0f} kWh" for v in kwh], textposition="outside", width=0.5))
+    fig.update_yaxes(title="Estimated storage (kWh)", range=[0, max(10, max(kwh)) * 1.2])
+    st.plotly_chart(ui.style_fig(fig, 280), width="stretch", config={"displayModeBar": False})
+    st.caption(f"Illustrative: constant {load:.0f} W load, {area:g} m² Sun-tracking array at {eff:.0%}, 95 % "
+               "charge/discharge efficiency, 80 % depth of discharge. Not a flight design.")
+
+st.markdown(f'<div class="lln-sec">{ui.mi("schedule")}Landing-Delay Risk<span class="lln-tag">score if the landing slips</span></div>',
+            unsafe_allow_html=True)
+with st.container(key="card_delay"):
+    fig = go.Figure()
+    xs = [("0 h" if h == 0 else f"+{h} h") for h in shifts]
+    for sid in order:
+        sc = table[table.site_id == sid].sort_values("shift_h")
+        win = sid in winners
+        fig.add_trace(go.Scatter(x=xs, y=sc.score, mode="lines+markers", name=names[sid] + ("  ★" if win else ""),
+                                 line=dict(color=ui.site_color(sid), width=4 if win else 2),
+                                 marker=dict(size=10 if win else 7), opacity=1 if win else 0.75))
+    fig.update_yaxes(range=[-3, 105], title="Score")
+    fig.update_xaxes(title="Landing delay")
+    fig = ui.style_fig(fig, 300)
+    fig.update_layout(legend=dict(orientation="v", yanchor="top", y=1, x=1.01, xanchor="left"),
+                      margin=dict(l=10, r=10, t=10, b=10))
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.caption(f"★ Highest worst-case score: {' & '.join(names[s] for s in winners)} ({top_score}).")
 
 ui.footer()
