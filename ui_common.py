@@ -140,7 +140,7 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 .lln-badge {{display:inline-flex; align-items:center; gap:6px; background:rgba(61,220,151,0.10); border:1px solid rgba(61,220,151,0.55);
    color:#3DDC97; border-radius:999px; padding:4px 12px; font-size:0.82rem; font-weight:600;}}
 .lln-foot {{color:#8FA4B0; font-size:0.84rem; margin-top:18px; border-top:1px solid {BORDER}; padding-top:10px;}}
-.lln-hero {{padding:28px 36px 24px 36px; min-height:150px; display:flex; align-items:center;
+.lln-hero {{padding:40px 40px 34px 40px; min-height:190px; display:flex; align-items:center;
    background: linear-gradient(90deg, rgba(6,19,31,0.95) 0%, rgba(6,19,31,0.70) 55%, rgba(6,19,31,0.20) 100%), url("BANNER_URI");
    background-size:cover; background-position:center;}}
 .lln-hero h1 {{font-size:2.5rem !important;}}

@@ -22,9 +22,36 @@ st.markdown(f'<div class="lln-banner lln-hero"><div class="row">{ui.mi("rocket_l
             'sunlight, Earth visibility, communication and mission timing — computed from NASA data.</div>'
             f'<div style="margin-top:12px">{ui.validated_pill()}</div></div></div></div>', unsafe_allow_html=True)
 
-# ------------------------------------------------------------------ quick ranking
+# ------------------------------------------------------------------ two ways into the details
+e, m = st.columns(2, gap="medium")
+with e:
+    with st.container(key="card_explorer"):
+        st.markdown(f'<div class="lln-mode">{ui.mi("groups", 36, ui.TEAL)}<h3>Explorer Mode</h3>'
+                    '<p>Learn and explore the Moon with a guided, visual experience.</p></div>',
+                    unsafe_allow_html=True)
+        st.page_link("views/sky_view.py", label="Start exploring", icon=":material/arrow_forward:")
+with m:
+    with st.container(key="amber_missioncontrol"):
+        st.markdown(f'<div class="lln-mode">{ui.mi("tune", 36, ui.AMBER)}<h3>Mission Control Mode</h3>'
+                    '<p>Plan a mission, compare sites, and make a landing decision.</p></div>',
+                    unsafe_allow_html=True)
+        st.page_link("views/overview.py", label="Open Mission Control", icon=":material/arrow_forward:")
+
+st.markdown('<div class="lln-sec" style="color:#7FF0DD;font-size:1.05rem">Explore the tool</div>',
+            unsafe_allow_html=True)
+for col, (page, label, icon) in zip(st.columns(3, gap="medium"), [
+        ("views/overview.py", "Mission Overview", ":material/bar_chart:"),
+        ("views/sky_view.py", "Sky View", ":material/landscape:"),
+        ("views/date_finder.py", "Date Finder", ":material/calendar_month:")]):
+    with col:
+        with st.container(key=f"card_nav_{label.split()[0]}"):
+            st.page_link(page, label=label, icon=icon)
+
+# ------------------------------------------------------------------ quick ranking (last layer)
+st.markdown('<div class="lln-sec" style="color:#7FF0DD;font-size:1.05rem">Quick site ranking</div>',
+            unsafe_allow_html=True)
 with st.container(key="card_quick"):
-    ui.card_title("leaderboard", "Quick site ranking", "pick sites and a landing date")
+    st.caption("Pick sites and a landing date for an overall ranking; open Mission Control for the details.")
     c1, c2, c3 = st.columns([2.4, 1, 1])
     chosen = c1.multiselect("Sites", list(names), format_func=names.get, key="m_sites")
     c2.date_input("Landing date (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
@@ -41,6 +68,7 @@ with st.container(key="card_quick"):
                                                terrain_real={s: ui.terrain_status(s) == "real" for s in chosen})
         except finder.DateRangeError:
             st.warning("Choose an earlier date or a shorter stay.")
+            ui.footer()
             st.stop()
         base = table[table.shift_h == 0].set_index("site_id")
         worst = base["worst_case_score"]
@@ -77,30 +105,4 @@ with st.container(key="card_quick"):
             st.plotly_chart(ui.south_pole_map(chosen, worst.to_dict(), height=330, highlight=winners[0]),
                             width="stretch", config=ui.MAP_CONFIG)
 
-# ------------------------------------------------------------------ two ways into the details
-st.markdown('<div class="lln-sec" style="color:#7FF0DD;font-size:1.05rem">Want the details?</div>',
-            unsafe_allow_html=True)
-e, m = st.columns(2, gap="medium")
-with e:
-    with st.container(key="card_explorer"):
-        st.markdown(f'<div class="lln-mode">{ui.mi("groups", 36, ui.TEAL)}<h3>Explorer Mode</h3>'
-                    '<p>Stand at a site in 3D and watch the Sun and Earth move over the real terrain.</p></div>',
-                    unsafe_allow_html=True)
-        st.page_link("views/sky_view.py", label="Start exploring", icon=":material/arrow_forward:")
-with m:
-    with st.container(key="amber_missioncontrol"):
-        st.markdown(f'<div class="lln-mode">{ui.mi("tune", 36, ui.AMBER)}<h3>Mission Control Mode</h3>'
-                    '<p>Mission clock, DSN geometry, schedule risk, power and every control.</p></div>',
-                    unsafe_allow_html=True)
-        st.page_link("views/overview.py", label="Open Mission Control", icon=":material/arrow_forward:")
-
-for col, (page, label, icon) in zip(st.columns(4, gap="medium"), [
-        ("views/overview.py", "Mission Overview", ":material/bar_chart:"),
-        ("views/sky_view.py", "Sky View", ":material/landscape:"),
-        ("views/date_finder.py", "Date Finder", ":material/calendar_month:"),
-        ("views/validation.py", "Validation & Sources", ":material/fact_check:")]):
-    with col:
-        with st.container(key=f"card_nav_{label.split()[0]}"):
-            st.page_link(page, label=label, icon=icon)
-
-ui.footer(link=False)
+ui.footer()
