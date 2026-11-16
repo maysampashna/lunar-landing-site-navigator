@@ -81,13 +81,21 @@ st.markdown(f"""<style>
 [data-testid="stAppViewContainer"] {{background:#02060C url("{stars}") center / cover fixed;}}
 .lln-h {{position:relative; width:100%; aspect-ratio: 2400 / 1350; border-radius:18px;
    background:url("{hero}") center / cover no-repeat; box-shadow:0 0 0 1px rgba(80,220,255,0.18), 0 20px 60px rgba(0,0,0,0.6);}}
-.lln-h .ttl {{position:absolute; top:1.6%; left:50%; transform:translateX(-50%); width:min(88%, 1200px);
-   padding:14px 34px 12px 34px; border-radius:18px; text-align:center;
-   background:linear-gradient(180deg, rgba(8,28,44,0.88), rgba(5,18,30,0.88));
-   border:1.5px solid rgba(80,220,255,0.75); box-shadow:0 0 22px rgba(80,220,255,0.35), inset 0 0 18px rgba(80,220,255,0.10);}}
-.lln-h .ttl .row {{display:flex; align-items:center; justify-content:center; gap:16px;}}
-.lln-h .ttl h1 {{margin:0; padding:0; font-size:clamp(1.5rem, 2.9vw, 2.7rem); font-weight:800; color:#F4FAFC;}}
-.lln-h .ttl .sub {{color:#C9DCE5; font-size:clamp(0.8rem, 1.05vw, 1.02rem); margin-top:4px;}}
+.lln-h .ttl {{position:absolute; top:2.2%; left:50%; transform:translateX(-50%); width:min(80%, 1080px);
+   filter: drop-shadow(0 0 16px rgba(80,220,255,0.55)) drop-shadow(0 0 40px rgba(120,110,255,0.25));}}
+.lln-h .ttl .edge {{padding:2px; clip-path:polygon(3.2% 0, 96.8% 0, 100% 50%, 96.8% 100%, 3.2% 100%, 0 50%);
+   background:linear-gradient(90deg, #50DCFF 0%, #9AF0FF 30%, #A97BFF 70%, #50DCFF 100%);}}
+.lln-h .ttl .core {{clip-path:polygon(3.2% 0, 96.8% 0, 100% 50%, 96.8% 100%, 3.2% 100%, 0 50%);
+   background:radial-gradient(ellipse at 50% 0%, rgba(80,220,255,0.22), transparent 65%),
+              linear-gradient(180deg, rgba(10,30,48,0.94), rgba(4,14,26,0.94));
+   padding:clamp(10px, 1.3vw, 18px) 6%; display:flex; align-items:center; justify-content:center; gap:18px;}}
+.lln-h .ttl .bar {{flex:0 0 clamp(30px, 6vw, 90px); height:2px; border-radius:2px;
+   background:linear-gradient(90deg, transparent, #50DCFF);}}
+.lln-h .ttl .bar.r {{background:linear-gradient(90deg, #A97BFF, transparent);}}
+.lln-h .ttl h1 {{margin:0; padding:0; font-size:clamp(1.6rem, 3.2vw, 3.1rem); font-weight:800; letter-spacing:0.02em;
+   background:linear-gradient(90deg, #FFFFFF 0%, #BFF4FF 55%, #D4C4FF 100%); -webkit-background-clip:text;
+   background-clip:text; color:transparent; white-space:nowrap;}}
+.lln-h .ttl .ic {{filter:drop-shadow(0 0 8px rgba(80,220,255,0.9));}}
 .lln-h .btns {{position:absolute; left:3%; right:3%; bottom:3%; display:flex; gap:3%;}}
 .lln-h .btns a {{flex:1; display:flex; align-items:center; justify-content:space-between; gap:14px; text-decoration:none;
    padding:clamp(8px, 1.0vw, 15px) clamp(14px, 1.8vw, 28px); border-radius:16px; background:rgba(5,16,28,0.82);
@@ -116,9 +124,9 @@ st.markdown(f"""<style>
 
 st.markdown(
     '<div class="lln-h">' + hotspots +
-    f'<div class="ttl"><div class="row">{ui.mi("rocket_launch", 44, "#50DCFF")}<h1>Lunar Landing Site Navigator</h1></div>'
-    '<div class="sub">Where and when to land at the lunar south pole — sunlight for power, Earth in view for '
-    'communication.</div></div>'
+    f'<div class="ttl"><div class="edge"><div class="core"><span class="bar"></span>'
+    f'<span class="ic">{ui.mi("rocket_launch", 46, "#7FE6FF")}</span><h1>Lunar Landing Site Navigator</h1>'
+    '<span class="bar r"></span></div></div></div>'
     '<div class="btns">'
     f'<a class="b1" href="mission" target="_self"><span class="ic">{ui.mi("bar_chart", 40, "#4FA3FF")}</span>'
     f'<span class="lb">Mission Dashboard</span><span class="ar">{ui.mi("arrow_forward", 28, "#4FA3FF")}</span></a>'
