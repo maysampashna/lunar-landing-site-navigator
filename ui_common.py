@@ -743,3 +743,47 @@ def moon_globe(site_ids, sun_vec=None, status: dict | None = None, scores: dict 
                                  camera=dict(center=dict(zip("xyz", map(float, center))),
                                              eye=dict(zip("xyz", map(float, eye))), up=up)))
     return fig
+
+
+# ------------------------------------------------------------------ in-app help (top-right of every inner page)
+HELP = [
+    ("What does this tool do?", "It compares NASA's Artemis III candidate landing sites at the lunar south pole by "
+     "when the Sun is up (power) and when Earth is in view (communication), using real NASA terrain and positions."),
+    ("Mission Dashboard", "Pick sites, a landing date and a stay. The ranking table shows which site is best; the 3D "
+     "view shows the Sun and Earth over the real terrain; the charts below explain why."),
+    ("Best Date Finder", "Search a date range for the landing start times that give the most sunlight and Earth "
+     "contact. Pick a result and click 'Open in Mission Dashboard' to study it."),
+    ("Data Validation", "Shows how the results were checked (against NASA JPL Horizons) and lists every data source."),
+    ("Sunlight %", "Share of the stay when the Sun is above the hills, so solar panels can make power."),
+    ("Earth contact %", "Share of the stay when Earth is above the hills and a NASA Deep Space Network dish can see "
+     "the Moon, so the lander can talk directly to Earth."),
+    ("Longest dark / Longest Earth gap", "The longest stretch, in hours, without sunlight / without Earth contact."),
+    ("Battery needed", "Rough battery size to keep a 1 kW lander running through the dark periods. Illustrative."),
+    ("Score", "0–100. Higher means more sunlight and Earth contact and shorter gaps. It is a planning preference, "
+     "not a safety rating."),
+    ("Score if delayed", "The lowest score if the landing slips 24 or 48 hours. Sites are ranked by it, so a site "
+     "that only works on schedule ranks lower."),
+    ("Ties (1=)", "Sites with the same score share a rank — they are equally good under the chosen settings."),
+    ("Selected time", "The slider under the controls picks one moment; the 3D view and 'At selected time' column "
+     "show that moment."),
+    ("Advanced settings", "Optional. Try your own lander or priorities; the defaults work for most uses."),
+    ("DSN", "NASA's Deep Space Network: large antennas in California, Spain and Australia that talk to spacecraft."),
+    ("Panorama / Sky Chart", "The full 360° skyline from the site with the Sun and Earth paths. Hollow markers are "
+     "behind the hills."),
+    ("Where does the data come from?", "Sun and Earth positions: NASA/JPL SPICE. Terrain: NASA LOLA (Lunar "
+     "Reconnaissance Orbiter). Sites: USGS Artemis III region maps."),
+]
+
+
+def help_button():
+    """Searchable help, top right of the page."""
+    _, h = st.columns([6, 1])
+    with h.popover("Help", icon=":material/help:", width="stretch"):
+        q = st.text_input("Search help", placeholder="e.g. score, DSN, battery", label_visibility="collapsed",
+                          key=f"help_q_{st.session_state.get('_page', '')}")
+        hits = [(t, d) for t, d in HELP if not q or q.lower() in (t + " " + d).lower()]
+        if not hits:
+            st.caption("No match — try another word.")
+        for t, d in hits:
+            st.markdown(f"**{t}**  \n<span style='color:#B9CCD6;font-size:0.88rem'>{d}</span>",
+                        unsafe_allow_html=True)

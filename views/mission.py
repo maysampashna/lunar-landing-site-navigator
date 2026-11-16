@@ -27,6 +27,7 @@ if not live.kernels_available():
 if st.session_state["m_sites"] and st.session_state.get("m_site") not in st.session_state["m_sites"]:
     st.session_state["m_site"] = st.session_state["m_sites"][0]
 
+ui.help_button()
 ui.banner("space_dashboard", "Mission Dashboard",
           "One control panel for sites, landing time and stay — every view below updates together.")
 

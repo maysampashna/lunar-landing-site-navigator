@@ -14,6 +14,7 @@ from engine import live
 import ui_common as ui
 
 ui.setup_page()
+ui.help_button()
 ui.banner("verified", "Data Validation",
           "What each check covers, what it does not, and where every input comes from.")
 names = ui.names()
