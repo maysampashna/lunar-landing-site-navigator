@@ -57,10 +57,7 @@ with st.container(key="card_ctl"):
                     max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
     c[2].number_input("Hour", 0, 23, key="m_hour")
     dur_days = c[3].slider("Surface stay (days)", 1.0, 14.0, step=0.5, key="m_dur")
-    adv = c[4].popover("Advanced", icon=":material/settings:", width="stretch", help=(
-        "**Why these settings?** The defaults describe a typical small lander and are fine for most comparisons. "
-        "Change them only to ask *what if?* — a different spacecraft, a stricter mission rule, or different "
-        "priorities — and watch the ranking update. Click to open."))
+    adv = c[4].popover("Advanced", icon=":material/settings:", width="stretch", help="Optional. Try your own lander or priorities and see how the ranking changes. The defaults work for most uses.")
     time_slot = st.container()
     with adv:
         def grp(icon, title):
