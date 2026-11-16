@@ -65,17 +65,17 @@ with st.container(key="card_ctl"):
                         f'#1C3A4A;padding-bottom:4px">{ui.mi(icon, 20)}<span>{title}</span></div>',
                         unsafe_allow_html=True)
         grp("cell_tower", "Communication (Earth contact)")
-        require_dsn = st.toggle("Require a NASA DSN antenna to see the Moon", True)
-        dsn_mask = st.slider("DSN minimum elevation (°)", 0.0, 20.0, 10.0, 1.0)
-        mask = st.slider("Earth clearance above terrain (°)", 0.0, 10.0, 0.0, 0.5)
+        require_dsn = st.toggle("Require a NASA DSN antenna to see the Moon", True, help="On: Earth contact also needs one of NASA's Deep Space Network dishes (California, Spain, Australia) to see the Moon. Off: Earth above the hills is enough.")
+        dsn_mask = st.slider("DSN minimum elevation (°)", 0.0, 20.0, 10.0, 1.0, help="How high the Moon must be in the sky at a DSN dish before it can be used. 10° is a typical value.")
+        mask = st.slider("Earth clearance above terrain (°)", 0.0, 10.0, 0.0, 0.5, help="Extra safety margin: how far Earth must rise above the hills before contact counts. 0 = just above the skyline.")
         grp("wb_sunny", "Power (sunlight and battery)")
-        thr = st.slider("Sunlit when this fraction of the Sun's disc is visible", 0.05, 1.0, 0.5, 0.05)
+        thr = st.slider("Sunlit when this fraction of the Sun's disc is visible", 0.05, 1.0, 0.5, 0.05, help="The Sun often peeks over the hills. 0.5 = the site counts as sunlit when at least half of the Sun is visible.")
         p1, p2 = st.columns(2)
-        area = p1.number_input("Solar array (m²)", 1.0, 200.0, 10.0)
-        eff = p2.slider("Array efficiency", 0.1, 0.4, 0.30)
-        load = st.number_input("Constant power load (W)", 50.0, 20000.0, 1000.0, 50.0)
+        area = p1.number_input("Solar array (m²)", 1.0, 200.0, 10.0, help="Size of the solar panels. Used only for the battery estimate.")
+        eff = p2.slider("Array efficiency", 0.1, 0.4, 0.30, help="Share of sunlight the panels turn into electricity (0.30 = 30 %).")
+        load = st.number_input("Constant power load (W)", 50.0, 20000.0, 1000.0, 50.0, help="Power the lander uses all the time. Sets how big the battery must be to get through dark periods.")
         grp("leaderboard", "Ranking")
-        extra = st.multiselect("Landing-delay scenarios (h)", [24, 48, 72], default=[24, 48])
+        extra = st.multiselect("Landing-delay scenarios (h)", [24, 48, 72], default=[24, 48], help="Landings often slip. The tool re-checks each site as if landing 24 or 48 hours late; Score if delayed is the worst of these.")
         w = ui.weights_sidebar(expander=False)
 
 shifts = sorted({0, *extra})
@@ -145,19 +145,25 @@ with st.container():
                     f'<td class="n">{r.score:.0f}</td><td class="n"><b>{r.worst_case_score:.0f}</b></td>'
                     f'<td>{ui.chip(lab, col)}</td><td>{ui.chip(*ui.STATUS[status[sid]])}</td></tr>')
     st.markdown(
-        '<table class="lln-table"><tr><th>#</th><th>Site</th>'
-        '<th class="n" title="Share of the stay with enough of the Sun above the terrain to generate power">'
-        'Sunlight %</th>'
-        '<th class="n" title="Share of the stay with Earth above the terrain and a NASA DSN antenna able to see the '
-        'Moon (direct-to-Earth line of sight)">Earth contact %</th>'
-        '<th class="n" title="Longest continuous period without sunlight">Longest dark (h)</th>'
-        '<th class="n" title="Longest continuous period without direct-to-Earth contact">Longest Earth gap (h)</th>'
-        '<th class="n" title="Illustrative battery needed to carry the load through the dark periods">'
-        'Battery needed (kWh)</th>'
-        '<th class="n" title="0–100 score if the landing happens at the planned time">Score on time</th>'
-        f'<th class="n" title="Lowest score if the landing slips by {late}; sites are ranked by this">'
-        'Score if delayed</th>'
-        '<th>Rating</th><th title="Sun and Earth at the selected time on the slider">At selected time</th></tr>'
+        '<table class="lln-table"><tr>'
+        '<th data-tip="Rank of the site. 1= means two or more sites share the same score.">#</th>'
+        '<th data-tip="NASA Artemis III candidate region, shown at one representative point.">Site</th>'
+        '<th class="n" data-tip="Percent of the stay when the Sun is above the hills around the site, so solar '
+        'panels can make power.">Sunlight %</th>'
+        '<th class="n" data-tip="Percent of the stay when Earth is above the hills AND a NASA Deep Space Network '
+        'antenna can see the Moon, so the site can talk directly to Earth.">Earth contact %</th>'
+        '<th class="n" data-tip="Longest stretch, in hours, with no sunlight. The lander must survive this on '
+        'batteries.">Longest dark (h)</th>'
+        '<th class="n" data-tip="Longest stretch, in hours, with no direct contact with Earth.">Longest Earth gap (h)</th>'
+        '<th class="n" data-tip="Rough battery size needed to keep a 1 kW lander running through the dark '
+        'periods. 0 = never dark. Illustrative, not a flight design.">Battery needed (kWh)</th>'
+        '<th class="n" data-tip="Overall 0–100 score if the landing happens exactly as planned. Higher = more '
+        'sunlight and Earth contact, shorter gaps.">Score on time</th>'
+        f'<th class="n" data-tip="Lowest score if the landing slips by {late}. Sites are ranked by this, so a '
+        'site that only works on schedule ranks lower.">Score if delayed</th>'
+        '<th data-tip="Excellent ≥ 90, Good 70–89, Fair 40–69, Poor below 40 (based on Score if delayed).">Rating</th>'
+        '<th class="tip-r" data-tip="Is the Sun and/or Earth visible at the moment chosen on the Selected time '
+        'slider?">At selected time</th></tr>'
         + "".join(rows) + "</table>", unsafe_allow_html=True)
     st.caption(f"Columns describe a landing at the planned time. Sites are ranked by **Score if delayed** — the lowest "
                f"score if the landing slips ({late}) — so a site that only works on schedule ranks lower. "

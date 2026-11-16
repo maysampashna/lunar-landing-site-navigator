@@ -88,7 +88,10 @@ section[data-testid="stSidebar"] {{background: linear-gradient(180deg, #071A28 0
 /* tables */
 .lln-table {{width:100%; border-collapse:separate; border-spacing:0 3px; font-size:0.93rem; font-variant-numeric: tabular-nums;}}
 .lln-table th {{text-align:left; color:#9FB4C0; font-weight:600; font-size:0.8rem; padding:6px 8px; border-bottom:1px solid {BORDER};}}
-.lln-table th[title] {{cursor:help; text-decoration: underline dotted #4A6474;}}
+.lln-table th[title], .lln-table th[data-tip] {{cursor:help; text-decoration: underline dotted #4A6474;}}
+.lln-table th[data-tip] {{position:relative;}}
+.lln-table th[data-tip]:hover::after {{content:attr(data-tip); position:absolute; top:calc(100% + 6px); left:0; z-index:50; width:240px; padding:10px 12px; border-radius:10px; background:#06182A; border:1px solid #2DD4BF; box-shadow:0 8px 24px rgba(0,0,0,0.55); color:#E6F1F5; font-size:0.84rem; font-weight:400; line-height:1.4; text-align:left; text-decoration:none; white-space:normal; pointer-events:none;}}
+.lln-table th.n[data-tip]:hover::after, .lln-table th.tip-r[data-tip]:hover::after {{left:auto; right:0;}}
 .lln-table td.n, .lln-table th.n {{text-align:right;}}
 .lln-table tr.tie td {{background:rgba(45,212,191,0.05);}}
 .lln-table td {{padding:6px 8px; background:rgba(255,255,255,0.015); color:#E6F1F5;}}
@@ -325,11 +328,11 @@ def weights_sidebar(expander: bool = True) -> ScoreWeights:
     import contextlib
     ctx = st.expander("⚖️ Score weights (your preferences)") if expander else contextlib.nullcontext()
     with ctx:
-        w = ScoreWeights(st.slider("Importance: sunlight", 0.0, 1.0, DEFAULT_WEIGHTS.w_sun),
-                         st.slider("Importance: Earth contact", 0.0, 1.0, DEFAULT_WEIGHTS.w_dte),
-                         st.slider("Importance: both at once", 0.0, 1.0, DEFAULT_WEIGHTS.w_both),
-                         st.slider("Penalty: longest dark period", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dark),
-                         st.slider("Penalty: longest Earth gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dte))
+        w = ScoreWeights(st.slider("Importance: sunlight", 0.0, 1.0, DEFAULT_WEIGHTS.w_sun, help="How much sunlight (power) counts in the score."),
+                         st.slider("Importance: Earth contact", 0.0, 1.0, DEFAULT_WEIGHTS.w_dte, help="How much direct contact with Earth counts in the score."),
+                         st.slider("Importance: both at once", 0.0, 1.0, DEFAULT_WEIGHTS.w_both, help="How much it counts to have sunlight and Earth contact at the same time — the best case for a lander."),
+                         st.slider("Penalty: longest dark period", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dark, help="Points taken off for long stretches without sunlight."),
+                         st.slider("Penalty: longest Earth gap", 0.0, 0.5, DEFAULT_WEIGHTS.w_gap_dte, help="Points taken off for long stretches without Earth contact."))
         if not w.is_valid():
             st.warning("Power, communication and both cannot all be zero — using the default weights.")
             w = DEFAULT_WEIGHTS
