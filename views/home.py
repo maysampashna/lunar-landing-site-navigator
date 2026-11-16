@@ -36,7 +36,9 @@ st.markdown(f'<div class="lln-home-head">{ui.mi("rocket_launch", 46, ui.TEAL)}<h
             'Earth in view for communication.</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="lln-hero-img"><img alt="The Moon with the Artemis III candidate landing sites" '
             f'src="{ui._data_uri(ROOT / "assets" / "home_moon.jpg", "image/jpeg")}"></div>', unsafe_allow_html=True)
-st.write("")
+st.markdown('<div style="text-align:right;color:#7F95A2;font-size:0.78rem;margin:2px 4px 10px 0">Rendered from NASA LOLA '
+            'terrain (Lunar Reconnaissance Orbiter) · sites: USGS Artemis III regions · illustrative lighting</div>',
+            unsafe_allow_html=True)
 for col, (key, page, label, icon) in zip(st.columns(3, gap="medium"), [
         ("home_go_dashboard", "views/mission.py", "Mission Dashboard", ":material/space_dashboard:"),
         ("home_go_dates", "views/date_finder.py", "Best Date Finder", ":material/event_available:"),
