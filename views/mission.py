@@ -57,20 +57,16 @@ with st.container(key="card_ctl"):
                     max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
     c[2].number_input("Hour", 0, 23, key="m_hour")
     dur_days = c[3].slider("Surface stay (days)", 1.0, 14.0, step=0.5, key="m_dur")
-    adv = c[4].popover("Advanced", icon=":material/settings:", width="stretch")
+    adv = c[4].popover("Advanced", icon=":material/settings:", width="stretch", help=(
+        "**Why these settings?** The defaults describe a typical small lander and are fine for most comparisons. "
+        "Change them only to ask *what if?* — a different spacecraft, a stricter mission rule, or different "
+        "priorities — and watch the ranking update. Click to open."))
     time_slot = st.container()
     with adv:
         def grp(icon, title):
             st.markdown(f'<div class="lln-ct" style="font-size:0.98rem;margin:6px 0 2px 0;border-bottom:1px solid '
                         f'#1C3A4A;padding-bottom:4px">{ui.mi(icon, 20)}<span>{title}</span></div>',
                         unsafe_allow_html=True)
-        st.markdown('<div style="background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.35);'
-                    'border-radius:10px;padding:10px 12px;font-size:0.86rem;color:#DCE9EF;line-height:1.45">'
-                    '<b style="color:#7FF0DD">Why these settings?</b> The defaults describe a typical small lander '
-                    'and are fine for most comparisons. Change them only to ask <i>"what if?"</i> — for a different '
-                    'spacecraft, a stricter mission rule, or different priorities — and watch the ranking update. '
-                    'Hover the <b>?</b> next to any setting for details.</div>', unsafe_allow_html=True)
-
         def when(text):
             st.markdown(f'<div style="color:#8FA4B0;font-size:0.8rem;margin:-2px 0 4px 0">When to change: {text}</div>',
                         unsafe_allow_html=True)
