@@ -15,12 +15,12 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 
 | Page | What you get |
 |---|---|
-| 🏠 **Home** | What the tool does, a rotatable 3D view of the lunar south pole from NASA LOLA terrain, and links to the three pages |
-| 🚀 **Mission Dashboard** | One control panel (sites, landing date and hour, stay, selected time) drives everything: a 3D observer view of the real terrain with the Sun and Earth, the 360° panorama and all-sky chart, the south-pole map (2D/3D), a NASA-style mission clock with upcoming AOS/LOS and DSN events, the **Mission Decision Summary** (ties shown as ties, worst case over landing delays), and tabs for site comparison, landing-delay risk, battery, **Deep Space Network** geometry and the visibility timeline |
+| 🏠 **Home** | A rotatable 3D Moon with real NASA LOLA terrain on the south polar cap, the eight sites labelled (hover for what each site is and why its region was chosen), and buttons to the three pages |
+| 🚀 **Mission Dashboard** | One horizontal control panel (sites, site shown in 3D, landing date and hour, stay, selected time, advanced settings) drives everything: the **station ranking** (tie-aware, worst case over landing delays), a 3D observer view of the real terrain with the Sun and Earth, the 360° panorama and sky chart, a NASA-style mission clock with upcoming AOS/LOS and DSN events, and tabs for landing-delay risk, battery, **Deep Space Network** geometry and the visibility timeline |
 | 📅 **Best Date Finder** | Best landing dates per site (2026–2031) with tie-aware ranks, one-click **Open in Mission Dashboard**, and a calendar heatmap |
 | ✅ **Data Validation** | Validation summary (scope of each check), JPL Horizons comparison, physics checks and tests, terrain status, data sources, limitations and AI-use statement |
 
-The 3D views use small LOLA tiles in `data/terrain3d.npz` (made by `scripts/make_terrain3d.py`); the Mission Dashboard map also has a rotatable 3D relief view and box zoom. Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
+The 3D views use small LOLA tiles in `data/terrain3d.npz` (made by `scripts/make_terrain3d.py`); the Home page shows a rotatable 3D Moon. Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
 
 ## Run it
 

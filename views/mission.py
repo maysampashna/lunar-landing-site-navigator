@@ -24,49 +24,37 @@ if not live.kernels_available():
     st.error("Ephemeris kernels are missing from this deployment.")
     st.stop()
 
-# map click → focus site (applied before the focus selector is drawn)
-sel = st.session_state.get("db_map")
-pts = (sel or {}).get("selection", {}).get("points", []) if isinstance(sel, dict) else \
-    (getattr(getattr(sel, "selection", None), "points", None) or [])
-if pts:
-    clicked = pts[0].get("customdata")
-    clicked = clicked[0] if isinstance(clicked, (list, tuple)) else clicked
-    if clicked in st.session_state["m_sites"] and st.session_state.get("_db_last_click") != clicked:
-        st.session_state["m_site"] = clicked
-    st.session_state["_db_last_click"] = clicked
 if st.session_state["m_sites"] and st.session_state.get("m_site") not in st.session_state["m_sites"]:
     st.session_state["m_site"] = st.session_state["m_sites"][0]
 
 ui.banner("space_dashboard", "Mission Dashboard",
           "One control panel for sites, landing time and stay — every view below updates together.")
 
-col_map, col_ctl = st.columns([2.2, 1], gap="medium")
-
-# ================================================================== the single control panel
-with col_ctl:
-    with st.container(key="card_ctl"):
-        ui.card_title("tune", "Mission controls")
-        chosen = st.multiselect("Candidate sites", list(names), format_func=names.get, key="m_sites")
-        if not chosen:
-            st.info("Pick at least one site.")
-            st.stop()
-        focus = st.selectbox("Site shown in 3D", chosen, format_func=names.get, key="m_site")
-        a_, b_ = st.columns([1.5, 1])
-        a_.date_input("Landing (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
-                      max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
-        b_.number_input("Hour", 0, 23, key="m_hour")
-        dur_days = st.slider("Surface stay (days)", 1.0, 14.0, step=0.5, key="m_dur")
-        time_slot = st.container()
-        with st.expander("Advanced", icon=":material/settings:"):
-            require_dsn = st.toggle("Require a DSN complex to see the Moon", True)
-            dsn_mask = st.slider("DSN elevation mask (°)", 0.0, 20.0, 10.0, 1.0)
-            mask = st.slider("Earth clearance above terrain (°)", 0.0, 10.0, 0.0, 0.5)
-            thr = st.slider("Sunlit if ≥ this fraction of the Sun's disc is visible", 0.05, 1.0, 0.5, 0.05)
-            area = st.number_input("Solar array area (m²)", 1.0, 200.0, 10.0)
-            eff = st.slider("Array efficiency", 0.1, 0.4, 0.30)
-            load = st.number_input("Constant load (W)", 50.0, 20000.0, 1000.0, 50.0)
-            extra = st.multiselect("Landing-delay scenarios (h)", [24, 48, 72], default=[24, 48])
-            w = ui.weights_sidebar(expander=False)
+# ================================================================== the single control panel (horizontal)
+with st.container(key="card_ctl"):
+    ui.card_title("tune", "Mission controls")
+    c = st.columns([2.7, 1.35, 1.05, 0.6, 1.3], vertical_alignment="bottom")
+    chosen = c[0].multiselect("Candidate sites", list(names), format_func=names.get, key="m_sites")
+    if not chosen:
+        st.info("Pick at least one site.")
+        st.stop()
+    focus = c[1].selectbox("Site shown in 3D", chosen, format_func=names.get, key="m_site")
+    c[2].date_input("Landing (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
+                    max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
+    c[3].number_input("Hour", 0, 23, key="m_hour")
+    dur_days = c[4].slider("Surface stay (days)", 1.0, 14.0, step=0.5, key="m_dur")
+    r2 = st.columns([3.6, 1.4], vertical_alignment="top")
+    time_slot = r2[0].container()
+    with r2[1].expander("Advanced settings", icon=":material/settings:"):
+        require_dsn = st.toggle("Require a DSN complex to see the Moon", True)
+        dsn_mask = st.slider("DSN elevation mask (°)", 0.0, 20.0, 10.0, 1.0)
+        mask = st.slider("Earth clearance above terrain (°)", 0.0, 10.0, 0.0, 0.5)
+        thr = st.slider("Sunlit if ≥ this fraction of the Sun's disc is visible", 0.05, 1.0, 0.5, 0.05)
+        area = st.number_input("Solar array area (m²)", 1.0, 200.0, 10.0)
+        eff = st.slider("Array efficiency", 0.1, 0.4, 0.30)
+        load = st.number_input("Constant load (W)", 50.0, 20000.0, 1000.0, 50.0)
+        extra = st.multiselect("Landing-delay scenarios (h)", [24, 48, 72], default=[24, 48])
+        w = ui.weights_sidebar(expander=False)
 
 shifts = sorted({0, *extra})
 step_min = 10
@@ -130,25 +118,33 @@ def next_events_for(sid, t_from):
     return out
 
 
-with col_ctl:
-    with st.container(key="card_now"):
-        ui.card_title("visibility", "At selected time")
-        ev = next_events_for(focus, t_sel)
-        nxt = f"{min(ev)[1]} in {(min(ev)[0] - t_sel).total_seconds() / 3600:.1f} h" if ev else "none before stay ends"
-
-        def yes(on, color):
-            return f'<b style="color:{color if on else ui.GREY}">{"YES" if on else "NO"}</b>'
-
-        st.markdown(
-            '<div class="lln-st" style="border:none;background:none;padding:0;margin:0">'
-            f'<div style="color:{ui.AMBER};font-weight:700;margin-bottom:4px">{names[focus]}</div>'
-            f'<div class="rw"><span>{ui.mi("wb_sunny", 18, ui.SUN)}Sunlight (power)</span>{yes(f0.sunlit, ui.SUN)}</div>'
-            f'<div class="rw"><span>{ui.mi("public", 18, ui.EARTH)}Earth contact (DTE)</span>'
-            f'{yes(f0.dte_visible, ui.EARTH)}</div>'
-            f'<div class="rw"><span>{ui.mi("event", 18, ui.GREY)}Next change</span><b>{nxt}</b></div>'
-            f'<div class="mut">Sun El {f0.sun_el_deg:+.2f}° (clears terrain {f0.sun_el_deg - f0.horizon_at_sun_deg:+.2f}°) · '
-            f'Earth El {f0.earth_el_deg:+.2f}° (clears {f0.earth_el_deg - f0.horizon_at_earth_deg:+.2f}°)</div></div>',
-            unsafe_allow_html=True)
+# ================================================================== station ranking
+st.markdown(f'<div class="lln-sec">{ui.mi("leaderboard")}Station ranking<span class="lln-tag">over the full stay</span>'
+            '</div>', unsafe_allow_html=True)
+with st.container():
+    rows = []
+    for sid in order:
+        r = base.loc[sid]
+        lab, col = ui.rating(r.worst_case_score)
+        rank = 1 + sum(round(worst[s]) > round(worst[sid]) for s in order)
+        tied = sum(round(worst[s]) == round(worst[sid]) for s in order) > 1
+        rows.append(f'<tr class="{"top" if sid in winners else ""}"><td>{rank}{"=" if tied else ""}</td>'
+                    f'<td><b>{names[sid]}</b></td><td>{ui.chip(*ui.STATUS[status[sid]])}</td>'
+                    f'<td class="n">{r.pct_sunlit:.0f}</td><td class="n">{r.pct_dte:.0f}</td>'
+                    f'<td class="n">{r.pct_both:.0f}</td><td class="n">{r.longest_dark_h:.0f}</td>'
+                    f'<td class="n">{r.required_nameplate_kwh:.0f}</td><td class="n"><b>{r.worst_case_score:.0f}</b></td>'
+                    f'<td>{ui.chip(lab, col)}</td></tr>')
+    st.markdown(
+        '<table class="lln-table"><tr><th>#</th><th>Site</th><th title="Sun / Earth at the selected time">Now</th>'
+        '<th class="n" title="Share of the stay with sunlight">Sun %</th>'
+        '<th class="n" title="Share of the stay with Earth contact (Earth above terrain + DSN geometry)">Earth %</th>'
+        '<th class="n" title="Sunlight and Earth contact at the same time">Both %</th>'
+        '<th class="n" title="Longest continuous period without sunlight">Longest dark (h)</th>'
+        '<th class="n" title="Illustrative battery nameplate for the constant load">Storage (kWh)</th>'
+        '<th class="n" title="Lowest score across the landing-delay scenarios">Worst-case score</th>'
+        '<th>Rating</th></tr>' + "".join(rows) + "</table>", unsafe_allow_html=True)
+    st.caption("Equal scores share a rank (1=). \"Now\" = Sun / Earth at the selected time.")
+st.write("")
 
 # ------------------------------------------------------------------ data for the station views
 w_f = live.fine_visibility(srows.loc[focus], hp, start, end_mission, params, step_min=60).reset_index(drop=True)
@@ -173,36 +169,7 @@ def earth_marker(row):
     return dict(size=20, symbol="circle", color=ui.EARTH, line=dict(color="white", width=1.5))
 
 
-# ================================================================== LAYER 1 — all stations on the map
-with col_map:
-    with st.container(key="card_map"):
-        v_, c_ = st.columns([0.7, 1.6], vertical_alignment="center")
-        view = v_.segmented_control("View", ["2D", "3D Moon"], default="2D", label_visibility="collapsed") or "2D"
-        color_by = c_.segmented_control("Colour", ["At selected time", "Mission rating"], default="At selected time",
-                                        label_visibility="collapsed")
-        stat_ = status if color_by != "Mission rating" else None
-        if view == "3D Moon" and ui.terrain3d() is not None:
-            gview = st.segmented_control("Globe view", ["Focus site", "All sites", "Whole Moon"], default="All sites",
-                                         label_visibility="collapsed") or "All sites"
-            sun = ui.sun_vector(srows.loc[focus, "lat_deg"], srows.loc[focus, "lon_deg"], f0.sun_az_deg, f0.sun_el_deg)
-            st.plotly_chart(ui.moon_globe(chosen, sun_vec=sun, status=stat_, scores=worst.to_dict(), highlight=focus,
-                                          view=gview, height=600),
-                            width="stretch", config={"displaylogo": False, "scrollZoom": True,
-                                                     "modeBarButtonsToRemove": ["toImage"]})
-        else:
-            st.plotly_chart(ui.south_pole_map(chosen, worst.to_dict(), height=640, highlight=focus, status=stat_),
-                            width="stretch", config=ui.MAP_CONFIG, on_select="rerun", selection_mode="points",
-                            key="db_map")
-        legend = (" ".join(ui.chip(l_, c2) for l_, c2 in ui.STATUS.values()) if stat_ is not None else
-                  " ".join(ui.chip(f"{l_} {r_}", c2) for l_, r_, c2 in
-                           [("Excellent", "≥90", "#3DDC97"), ("Good", "70–89", "#4C8DFF"),
-                            ("Fair", "40–69", "#FFB02E"), ("Poor", "<40", "#FF6B8B")]))
-        st.markdown(legend + '<div style="color:#8FA4B0;font-size:0.8rem;margin-top:4px">'
-                    + ("Drag to rotate, scroll to zoom · lit by the Sun at the selected time · LOLA terrain on the polar cap (×5)" if view == "3D Moon" else
-                       "Click a site to show it in 3D · drag to move, +/− to zoom") + '</div>', unsafe_allow_html=True)
-
-
-# ================================================================== LAYER 2 — station view + mission clock
+# ================================================================== station view + mission clock
 col_vis, col_clock = st.columns([2.2, 1], gap="medium")
 with col_vis:
     with st.container(key="card_vis"):
@@ -311,73 +278,7 @@ with col_clock:
                     + ("" if events else '<div class="lln-ev">No changes before the end of the stay</div>'),
                     unsafe_allow_html=True)
 
-# ================================================================== LAYER 3 — decision summary
-fragile = []
-for sid in order:
-    sc = table[table.site_id == sid].set_index("shift_h")["score"]
-    if sc.loc[0] - sc.min() >= 5:
-        fragile.append(f"{names[sid]} drops from {sc.loc[0]:.0f} to {sc.min():.0f} at +{int(sc.idxmin())} h")
-
-
-def vals(col, fmt="{:.0f}"):
-    v = [fmt.format(base.loc[s, col]) for s in winners]
-    return v[0] if len(set(v)) == 1 else " / ".join(v)
-
-
-shift_txt = " | ".join(("0 h" if h == 0 else f"+{h} h") + " " + " / ".join(dict.fromkeys(
-    f"{table[(table.site_id == s) & (table.shift_h == h)].score.iloc[0]:.0f}" for s in winners)) for h in shifts)
-tie = len(winners) > 1
-wb = base.loc[winners[0]]
-reason = ("Sunlight and Earth contact are available for the whole stay" if wb.pct_sunlit >= 99.5 and wb.pct_dte >= 99.5
-          else f"Highest combined sunlight ({vals('pct_sunlit')}%) and Earth contact ({vals('pct_dte')}%)")
-reason += (", and the score holds if the landing slips." if all(worst[s] >= base.loc[s, "score"] - 0.5 for s in winners)
-           else ", with the smallest loss if the landing slips.")
-if tie:
-    reason = f"{len(winners)} sites tie in every scenario. " + reason
-if fragile:
-    reason += f"<br>Schedule risk: {'; '.join(fragile)}."
-head = ("Tie · best modeled sites" if tie else "Best modeled site") if best is not None else "Demonstration ranking"
-st.markdown(
-    '<div class="lln-dec">'
-    f'<div class="site"><div class="lb">{ui.mi("flag", 18, ui.AMBER)} {head}</div>'
-    f'<div class="nm">{" &amp; ".join(names[s] for s in winners)}</div>'
-    f'<div style="color:#B5C7D1;font-size:0.82rem;margin-top:2px">{dur_days:g}-day stay from {ui.doy(start)}</div></div>'
-    f'<div class="score"><div class="lb">Worst-case score</div><div class="vl">{top_score}</div>'
-    '<div style="color:#8FA4B0;font-size:0.8rem">of 100</div></div><div class="mt">'
-    f'<span>{ui.mi("wb_sunny", 17, ui.SUN)} Sunlight over stay</span><b>{vals("pct_sunlit")}%</b>'
-    f'<span>{ui.mi("public", 17, ui.EARTH)} Earth contact over stay</span><b>{vals("pct_dte")}%</b>'
-    f'<span>{ui.mi("battery_charging_full", 17, ui.SUN)} Estimated storage</span><b>{vals("required_nameplate_kwh")} kWh</b>'
-    f'<span>{ui.mi("schedule", 17, ui.TEAL)} Score if landing slips</span><b>{shift_txt}</b></div>'
-    f'<div class="why"><b>Why:</b> {reason}<div class="nt">Modeled comparison under the selected criteria — '
-    'not a landing-safety recommendation.</div></div></div>', unsafe_allow_html=True)
-
-# ================================================================== LAYER 4 — analysis (compact tabs)
-st.markdown(f'<div class="lln-sec">{ui.mi("leaderboard")}Station ranking<span class="lln-tag">over the full stay</span>'
-            '</div>', unsafe_allow_html=True)
-with st.container():
-    rows = []
-    for sid in order:
-        r = base.loc[sid]
-        lab, col = ui.rating(r.worst_case_score)
-        rank = 1 + sum(round(worst[s]) > round(worst[sid]) for s in order)
-        tied = sum(round(worst[s]) == round(worst[sid]) for s in order) > 1
-        rows.append(f'<tr class="{"top" if sid in winners else ""}"><td>{rank}{"=" if tied else ""}</td>'
-                    f'<td><b>{names[sid]}</b></td><td>{ui.chip(*ui.STATUS[status[sid]])}</td>'
-                    f'<td class="n">{r.pct_sunlit:.0f}</td><td class="n">{r.pct_dte:.0f}</td>'
-                    f'<td class="n">{r.pct_both:.0f}</td><td class="n">{r.longest_dark_h:.0f}</td>'
-                    f'<td class="n">{r.required_nameplate_kwh:.0f}</td><td class="n"><b>{r.worst_case_score:.0f}</b></td>'
-                    f'<td>{ui.chip(lab, col)}</td></tr>')
-    st.markdown(
-        '<table class="lln-table"><tr><th>#</th><th>Site</th><th title="Sun / Earth at the selected time">Now</th>'
-        '<th class="n" title="Share of the stay with sunlight">Sun %</th>'
-        '<th class="n" title="Share of the stay with Earth contact (Earth above terrain + DSN geometry)">Earth %</th>'
-        '<th class="n" title="Sunlight and Earth contact at the same time">Both %</th>'
-        '<th class="n" title="Longest continuous period without sunlight">Longest dark (h)</th>'
-        '<th class="n" title="Illustrative battery nameplate for the constant load">Storage (kWh)</th>'
-        '<th class="n" title="Lowest score across the landing-delay scenarios">Worst-case score</th>'
-        '<th>Rating</th></tr>' + "".join(rows) + "</table>", unsafe_allow_html=True)
-    st.caption("Equal scores share a rank (1=). \"Now\" = Sun / Earth at the selected time.")
-st.write("")
+# ================================================================== analysis tabs
 tabs = st.tabs([":material/schedule: Landing-Delay Risk", ":material/battery_charging_full: Battery & Power",
                 ":material/cell_tower: DSN Geometry", ":material/timeline: Visibility Timeline"])
 with tabs[0]:
