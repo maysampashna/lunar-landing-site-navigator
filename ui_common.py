@@ -718,18 +718,21 @@ def moon_globe(site_ids, sun_vec=None, status: dict | None = None, scores: dict 
                                            line=dict(color="white", width=1.5))))
     L = 1.08 * R_MOON_KM
     pole = np.array([0.0, 0.0, -R_MOON_KM]) / L * 0.5      # plotly camera units span half the axis range
+    # Cameras look at the south pole from outside the Moon with 0° longitude at the top of the screen and 90°E
+    # on the right — the same orientation as the 2D map — tilted from the 180° side for a 3D feel.
+    up = dict(x=1, y=0, z=0)
     if view == "Whole Moon":
-        center, eye = np.zeros(3), np.array([0.9, -1.3, -1.1])
+        center, eye, up = np.zeros(3), np.array([1.55, -0.35, -0.9]), dict(x=0, y=0, z=1)   # north up
     elif view == "Focus site" and highlight in s.index:
         c = np.array(_latlon_xyz(s.loc[highlight, "lat_deg"], s.loc[highlight, "lon_deg"], R_MOON_KM)) / L * 0.5
-        center, eye = c, c + np.array([0.0, -0.03, -0.04])
+        center, eye = c, c + np.array([-0.035, 0.0, -0.05])
     else:                                                            # "All sites"
-        center, eye = pole, pole + np.array([0.0, -0.13, -0.17])
+        center, eye = pole, pole + np.array([-0.11, 0.0, -0.19])
     ax = dict(visible=False, range=[-L, L])
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                       showlegend=False, uirevision=f"globe-{view}-{highlight}",
                       scene=dict(bgcolor="rgba(0,0,0,0)", aspectmode="cube", xaxis=ax, yaxis=ax, zaxis=ax,
+                                 dragmode="orbit",
                                  camera=dict(center=dict(zip("xyz", map(float, center))),
-                                             eye=dict(zip("xyz", map(float, eye))),
-                                             up=dict(x=0, y=0, z=1))))
+                                             eye=dict(zip("xyz", map(float, eye))), up=up)))
     return fig
