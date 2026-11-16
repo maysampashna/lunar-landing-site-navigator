@@ -281,7 +281,7 @@ else:
                                                    font=dict(color="#E2EEF3", size=13, family=ui.FONT))))
         L = 1.22 * ui.R_MOON_KM                                     # room for the label ring above the pole
         ks = 1.08 / 1.22                                            # keep the same framing as before
-        ax = dict(visible=False, range=[-L, L])
+        ax = dict(visible=False, range=[-L, L], showspikes=False)
         fig.update_layout(height=800, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                           showlegend=False, uirevision=f"home-globe-{rev}", hoverlabel=dict(align="left"),
                           scene=dict(bgcolor="rgba(0,0,0,0)", aspectmode="cube", xaxis=ax, yaxis=ax, zaxis=ax,

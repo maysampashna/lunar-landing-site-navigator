@@ -576,7 +576,7 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 2.0, height: int 
         font=dict(family=FONT, color="#C9D1E3"), showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=0.0, x=0.01, bgcolor="rgba(6,19,31,0.6)"),
         scene=dict(bgcolor="#000000", aspectmode="data",
-                   xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
+                   xaxis=dict(visible=False, showspikes=False), yaxis=dict(visible=False, showspikes=False), zaxis=dict(visible=False, showspikes=False),
                    camera=dict(eye=dict(x=float(cam[0]) * 1.8, y=float(cam[1]) * 1.8, z=1.0),
                                center=dict(x=0, y=0, z=-0.1))))
     return fig
@@ -620,7 +620,7 @@ def region_3d(site_ids, status: dict | None = None, scores: dict | None = None, 
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                       showlegend=False, uirevision="region3d",
                       scene=dict(bgcolor="#03050C", aspectmode="data",
-                                 xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False),
+                                 xaxis=dict(visible=False, showspikes=False), yaxis=dict(visible=False, showspikes=False), zaxis=dict(visible=False, showspikes=False),
                                  camera=dict(eye=dict(x=0.0, y=-1.55, z=1.65), center=dict(x=0, y=0, z=-0.25))))
     return fig
 
@@ -738,7 +738,7 @@ def moon_globe(site_ids, sun_vec=None, status: dict | None = None, scores: dict 
     else:                                                                              # "All sites"
         d = units.mean(axis=0)
         eye = d / np.linalg.norm(d) * 0.74
-    ax = dict(visible=False, range=[-L, L])
+    ax = dict(visible=False, range=[-L, L], showspikes=False)
     fig.update_layout(height=height, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                       showlegend=False, uirevision=f"globe-{view}-{highlight}",
                       scene=dict(bgcolor="rgba(0,0,0,0)", aspectmode="cube", xaxis=ax, yaxis=ax, zaxis=ax,
