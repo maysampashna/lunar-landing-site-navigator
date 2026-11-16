@@ -579,6 +579,8 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 2.0, height: int 
                    xaxis=dict(visible=False, showspikes=False), yaxis=dict(visible=False, showspikes=False), zaxis=dict(visible=False, showspikes=False),
                    camera=dict(eye=dict(x=float(cam[0]) * 1.8, y=float(cam[1]) * 1.8, z=1.0),
                                center=dict(x=0, y=0, z=-0.1))))
+    fig.update_traces(contours_x_highlight=False, contours_y_highlight=False, contours_z_highlight=False,
+                      selector=dict(type="surface"))
     return fig
 
 
@@ -622,6 +624,8 @@ def region_3d(site_ids, status: dict | None = None, scores: dict | None = None, 
                       scene=dict(bgcolor="#03050C", aspectmode="data",
                                  xaxis=dict(visible=False, showspikes=False), yaxis=dict(visible=False, showspikes=False), zaxis=dict(visible=False, showspikes=False),
                                  camera=dict(eye=dict(x=0.0, y=-1.55, z=1.65), center=dict(x=0, y=0, z=-0.25))))
+    fig.update_traces(contours_x_highlight=False, contours_y_highlight=False, contours_z_highlight=False,
+                      selector=dict(type="surface"))
     return fig
 
 
@@ -745,6 +749,8 @@ def moon_globe(site_ids, sun_vec=None, status: dict | None = None, scores: dict 
                                  dragmode="orbit",
                                  camera=dict(center=dict(zip("xyz", map(float, center))),
                                              eye=dict(zip("xyz", map(float, eye))), up=up)))
+    fig.update_traces(contours_x_highlight=False, contours_y_highlight=False, contours_z_highlight=False,
+                      selector=dict(type="surface"))
     return fig
 
 

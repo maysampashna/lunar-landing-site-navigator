@@ -289,6 +289,8 @@ else:
                                      camera=dict(center=dict(zip("xyz", map(float, (center + up * CAM["lift"]) * ks))),
                                                  eye=dict(zip("xyz", map(float, (eye + up * CAM["lift"]) * ks))),
                                                  up=dict(zip("xyz", map(float, up))))))
+        fig.update_traces(contours_x_highlight=False, contours_y_highlight=False, contours_z_highlight=False,
+                          selector=dict(type="surface"))
         return fig, label_colors
 
     rev = st.session_state.get("home_globe_rev", 0)
