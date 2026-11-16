@@ -88,21 +88,21 @@ st.markdown(f"""<style>
 .lln-h .ttl .core {{clip-path:polygon(3.2% 0, 96.8% 0, 100% 50%, 96.8% 100%, 3.2% 100%, 0 50%);
    background:radial-gradient(ellipse at 50% 0%, rgba(80,220,255,0.22), transparent 65%),
               linear-gradient(180deg, rgba(10,30,48,0.94), rgba(4,14,26,0.94));
-   padding:clamp(10px, 1.3vw, 18px) 6%; display:flex; align-items:center; justify-content:center; gap:18px;}}
+   padding:clamp(5px, 0.7vw, 10px) 6%; display:flex; align-items:center; justify-content:center; gap:18px;}}
 .lln-h .ttl .bar {{flex:0 0 clamp(30px, 6vw, 90px); height:2px; border-radius:2px;
    background:linear-gradient(90deg, transparent, #50DCFF);}}
 .lln-h .ttl .bar.r {{background:linear-gradient(90deg, #A97BFF, transparent);}}
-.lln-h .ttl h1 {{margin:0; padding:0; font-size:clamp(1.6rem, 3.2vw, 3.1rem); font-weight:800; letter-spacing:0.02em;
+.lln-h .ttl h1 {{margin:0; padding:0; font-size:clamp(1.4rem, 2.7vw, 2.6rem); font-weight:800; letter-spacing:0.02em;
    background:linear-gradient(90deg, #FFFFFF 0%, #BFF4FF 55%, #D4C4FF 100%); -webkit-background-clip:text;
    background-clip:text; color:transparent; white-space:nowrap;}}
 .lln-h .ttl .ic {{filter:drop-shadow(0 0 8px rgba(80,220,255,0.9));}}
 .lln-h .btns {{position:absolute; left:3%; right:3%; bottom:3%; display:flex; gap:3%;}}
 .lln-h .btns a {{flex:1; display:flex; align-items:center; justify-content:space-between; gap:14px; text-decoration:none;
-   padding:clamp(8px, 1.0vw, 15px) clamp(14px, 1.8vw, 28px); border-radius:16px; background:rgba(5,16,28,0.82);
-   color:#F4FAFC !important; font-weight:700; font-size:clamp(0.95rem, 1.45vw, 1.45rem); backdrop-filter:blur(4px);
+   padding:clamp(4px, 0.55vw, 9px) clamp(14px, 1.8vw, 28px); border-radius:14px; background:rgba(5,16,28,0.82);
+   color:#F4FAFC !important; font-weight:700; font-size:clamp(0.9rem, 1.25vw, 1.25rem); backdrop-filter:blur(4px);
    transition:transform .15s ease, box-shadow .15s ease;}}
 .lln-h .btns a:hover {{transform:translateY(-3px);}}
-.lln-h .btns a .ic {{font-size:clamp(1.6rem, 2.4vw, 2.4rem);}}
+.lln-h .btns a .ic {{font-size:clamp(1.3rem, 1.9vw, 1.9rem);}}
 .lln-h .btns a .lb {{flex:1; text-align:left;}}
 .lln-h .b1 {{border:1.5px solid #4FA3FF; box-shadow:0 0 20px rgba(79,163,255,0.45);}} .lln-h .b1 .ic, .lln-h .b1 .ar {{color:#4FA3FF;}}
 .lln-h .b2 {{border:1.5px solid #A97BFF; box-shadow:0 0 20px rgba(169,123,255,0.45);}} .lln-h .b2 .ic, .lln-h .b2 .ar {{color:#B58CFF;}}
@@ -125,15 +125,15 @@ st.markdown(f"""<style>
 st.markdown(
     '<div class="lln-h">' + hotspots +
     f'<div class="ttl"><div class="edge"><div class="core"><span class="bar"></span>'
-    f'<span class="ic">{ui.mi("rocket_launch", 46, "#7FE6FF")}</span><h1>Lunar Landing Site Navigator</h1>'
+    f'<span class="ic">{ui.mi("rocket_launch", 38, "#7FE6FF")}</span><h1>Lunar Landing Site Navigator</h1>'
     '<span class="bar r"></span></div></div></div>'
     '<div class="btns">'
-    f'<a class="b1" href="mission" target="_self"><span class="ic">{ui.mi("bar_chart", 40, "#4FA3FF")}</span>'
-    f'<span class="lb">Mission Dashboard</span><span class="ar">{ui.mi("arrow_forward", 28, "#4FA3FF")}</span></a>'
-    f'<a class="b2" href="date_finder" target="_self"><span class="ic">{ui.mi("calendar_month", 40, "#B58CFF")}</span>'
-    f'<span class="lb">Best Date Finder</span><span class="ar">{ui.mi("arrow_forward", 28, "#B58CFF")}</span></a>'
-    f'<a class="b3" href="validation" target="_self"><span class="ic">{ui.mi("settings", 40, "#2DD4BF")}</span>'
-    f'<span class="lb">Data Validation</span><span class="ar">{ui.mi("arrow_forward", 28, "#2DD4BF")}</span></a>'
+    f'<a class="b1" href="mission" target="_self"><span class="ic">{ui.mi("bar_chart", 32, "#4FA3FF")}</span>'
+    f'<span class="lb">Mission Dashboard</span><span class="ar">{ui.mi("arrow_forward", 24, "#4FA3FF")}</span></a>'
+    f'<a class="b2" href="date_finder" target="_self"><span class="ic">{ui.mi("calendar_month", 32, "#B58CFF")}</span>'
+    f'<span class="lb">Best Date Finder</span><span class="ar">{ui.mi("arrow_forward", 24, "#B58CFF")}</span></a>'
+    f'<a class="b3" href="validation" target="_self"><span class="ic">{ui.mi("settings", 32, "#2DD4BF")}</span>'
+    f'<span class="lb">Data Validation</span><span class="ar">{ui.mi("arrow_forward", 24, "#2DD4BF")}</span></a>'
     '</div></div>'
     '<div class="lln-credit">Rendered from NASA LOLA terrain (Lunar Reconnaissance Orbiter) · sites: USGS Artemis III '
     'regions · Sun placement illustrative</div>', unsafe_allow_html=True)
