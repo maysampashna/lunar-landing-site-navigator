@@ -9,6 +9,7 @@ data/terrain3d.npz. Shading: Lambert from a low polar Sun (illustrative lighting
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 
 import numpy as np
@@ -165,7 +166,7 @@ def main():
     for s_ in sites:
         u, v, okv = proj(latlon_xyz(float(s_["lat_deg"]), float(s_["lon_deg"]), R + float(s_["height_m"]) / 1000.0) - cam)
         if okv:
-            pts.append((u, v, s_["name"]))
+            pts.append((u, v, s_["name"], s_["site_id"]))
     pts.sort(key=lambda p_: p_[0])
     f = font(30, bold=True)
     cyan = (80, 220, 255)
@@ -177,19 +178,19 @@ def main():
             " ".join(w_[len(w_) // 2 + (len(w_) == 3):])
 
     boxes = []
-    for k, (u, v, name) in enumerate(pts):
+    for k, (u, v, name, sid) in enumerate(pts):
         txt = wrap(name)
         bb = draw.multiline_textbbox((0, 0), txt, font=f, align="center", spacing=4)
         bw, bh = bb[2] - bb[0] + 34, bb[3] - bb[1] + 26
         ly = max(H * 0.27, v - 120 - (k % 3) * 66)
-        boxes.append([u, ly, bw, bh, txt, u, v])
+        boxes.append([u, ly, bw, bh, txt, u, v, sid])
     for _ in range(60):                                                   # spread boxes horizontally
         for a_, b_ in zip(boxes, boxes[1:]):
             gap = (b_[0] - a_[0]) - (a_[2] + b_[2]) / 2 - 18
             if gap < 0 and abs(a_[1] - b_[1]) < (a_[3] + b_[3]) / 2 + 10:
                 a_[0] += gap / 2; b_[0] -= gap / 2
     layer = Image.new("RGB", (W, H), (0, 0, 0)); ld = ImageDraw.Draw(layer)
-    for lx, ly, bw, bh, txt, u, v in boxes:
+    for lx, ly, bw, bh, txt, u, v, sid in boxes:
         lx = float(np.clip(lx, bw / 2 + 20, W - bw / 2 - 20))
         ld.line([(lx, ly + bh / 2), (u, v)], fill=cyan, width=6)
         ld.ellipse([u - 16, v - 16, u + 16, v + 16], fill=cyan)
@@ -197,8 +198,10 @@ def main():
     layer = layer.filter(ImageFilter.GaussianBlur(9))
     out = Image.fromarray(np.clip(np.asarray(out, float) + 0.8 * np.asarray(layer, float), 0, 255).astype(np.uint8))
     draw = ImageDraw.Draw(out)
-    for lx, ly, bw, bh, txt, u, v in boxes:
+    hot = []
+    for lx, ly, bw, bh, txt, u, v, sid in boxes:
         lx = float(np.clip(lx, bw / 2 + 20, W - bw / 2 - 20))
+        hot.append({"site_id": sid, "x": (lx - bw / 2) / W, "y": (ly - bh / 2) / H, "w": bw / W, "h": bh / H})
         draw.line([(lx, ly + bh / 2), (u, v)], fill=(150, 235, 255), width=2)
         draw.rounded_rectangle([lx - bw / 2, ly - bh / 2, lx + bw / 2, ly + bh / 2], radius=12,
                                fill=(6, 22, 36), outline=(110, 225, 255), width=2)
@@ -207,6 +210,7 @@ def main():
     # darken the bottom for the buttons
     fade = np.clip((np.arange(H) - 0.70 * H) / (0.30 * H), 0, 1) ** 1.5 * 0.65
     out = Image.fromarray((np.asarray(out, float) * (1 - fade)[:, None, None]).astype(np.uint8))
+    (ROOT / "assets" / "home_moon_labels.json").write_text(json.dumps(hot, indent=1))
     out.save(ROOT / "assets" / "home_moon.jpg", quality=90, optimize=True, progressive=True)
     star_field(np.random.default_rng(11), 1920, 1080, 6500).save(ROOT / "assets" / "stars.jpg", quality=85,
                                                                 optimize=True)
