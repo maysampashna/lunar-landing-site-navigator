@@ -15,13 +15,12 @@ answering one question: *which location is best modeled for a 6-day stay, and do
 
 | Page | What you get |
 |---|---|
-| 🏠 **Home** | South-pole map and two entry points: **Explorer Mode** (three guided questions: where, when, why the date matters) and **Mission Control Mode** (full analysis) |
-| 🚀 **Mission Overview** | Pick sites, surface start and stay. Top row: setup, terrain map (click a site to focus it) and a simulated mission clock (UTC day-of-year, MET) with upcoming AOS/LOS, sunrise/sunset and DSN events. Then a **Mission Decision Summary** (best modeled site, ties shown as ties, worst case over +24/+48 h start shifts), site status at the selected time, and tabs for site comparison, **Deep Space Network** geometry (Goldstone, Madrid, Canberra), visibility timeline, schedule risk and storage |
-| 🔭 **Sky View** | Stand at a site: a rotatable **3D observer view** built from NASA LOLA terrain (with the full 150 km skyline and the Sun/Earth at their true directions), an animated panorama of the Sun and Earth over the real terrain skyline (drawn hollow when behind terrain), a true-size telescope close-up with terrain in front, an all-sky horizon chart, and a **Now (UTC)** mode |
-| 📅 **Date Finder** | Best surface-start dates per site (2026–2031) with tie-aware ranks, one-click **Open in Mission Overview**, and a calendar heatmap |
-| ✅ **Validation & Sources** | Validation summary (scope of each check), then JPL Horizons comparison, physics checks and tests, terrain status, data sources, limitations and AI-use statement |
+| 🏠 **Home** | What the tool does, a rotatable 3D view of the lunar south pole from NASA LOLA terrain, and links to the three pages |
+| 🚀 **Mission Dashboard** | One control panel (sites, landing date and hour, stay, selected time) drives everything: a 3D observer view of the real terrain with the Sun and Earth, the 360° panorama and all-sky chart, the south-pole map (2D/3D), a NASA-style mission clock with upcoming AOS/LOS and DSN events, the **Mission Decision Summary** (ties shown as ties, worst case over landing delays), and tabs for site comparison, landing-delay risk, battery, **Deep Space Network** geometry and the visibility timeline |
+| 📅 **Best Date Finder** | Best landing dates per site (2026–2031) with tie-aware ranks, one-click **Open in Mission Dashboard**, and a calendar heatmap |
+| ✅ **Data Validation** | Validation summary (scope of each check), JPL Horizons comparison, physics checks and tests, terrain status, data sources, limitations and AI-use statement |
 
-The 3D views use small LOLA tiles in `data/terrain3d.npz` (made by `scripts/make_terrain3d.py`); the Mission Overview map also has a rotatable 3D relief view and box zoom. Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
+The 3D views use small LOLA tiles in `data/terrain3d.npz` (made by `scripts/make_terrain3d.py`); the Mission Dashboard map also has a rotatable 3D relief view and box zoom. Header banners, logo and thumbnails are generated from the real LOLA south-pole hillshade (`assets/`); no AI-generated imagery is used.
 
 ## Run it
 
@@ -59,7 +58,7 @@ time; otherwise the app labels results as a demonstration ranking.
 | Score | `100·clip(w_sun·f_sun + w_dte·f_dte + w_both·f_both − w_gd·g_dark − w_ge·g_dte, 0, 1)`; positive weights renormalised to sum 1; gaps normalised by window length |
 | Eclipses | Sun disc hidden behind Earth (circle overlap from the site) reduces sunlight and power; total lunar eclipses 2026-03-03 and 2028-12-31 are detected in tests |
 | Terrain uncertainty | Where a ray ran out of DEM data and unknown far terrain (≤12 km relief) could reach above the Sun/Earth, the time step is 'uncertain'; sites uncertain >5 % of the time are excluded from the confident ranking |
-| Resolution | Hourly precompute for date scanning; Mission Overview recomputes its windows at 10-min resolution with the kernels (else labelled approximate) |
+| Resolution | Hourly precompute for date scanning; the Mission Dashboard recomputes its windows at 10-min resolution with the kernels (else labelled approximate) |
 | Communication (DSN) | Direct-to-Earth contact = Earth above the site's terrain horizon (+ mask) **and** the Moon ≥ 10° (adjustable) above the horizon at Goldstone, Madrid or Canberra (geometric; no antenna scheduling or link budget) |
 | Timing sensitivity | Assumes surface arrival shifts exactly +24/+48 h; decision = highest worst-case score |
 

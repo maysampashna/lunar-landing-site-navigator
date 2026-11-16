@@ -1,4 +1,4 @@
-"""Home — a quick ranking of the sites for a chosen date, then two ways in for the details."""
+"""Home — what the tool does, a 3D view of the real lunar south pole, and three ways in."""
 from __future__ import annotations
 
 import sys
@@ -6,103 +6,68 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pandas as pd
 import streamlit as st
 
-from engine import finder
-from engine.metrics import ScoreWeights
-from engine.power import PowerParams
 import ui_common as ui
 
 ui.setup_page()
 names = ui.names()
 
-st.markdown(f'<div class="lln-banner lln-hero"><div class="row">{ui.mi("rocket_launch", 46, "#F2F8FA")}'
-            '<div><h1>Lunar Landing Site Navigator</h1><div class="sub">Compare lunar south-pole landing sites by '
-            'sunlight, Earth visibility, communication and mission timing — computed from NASA data.</div>'
-            f'<div style="margin-top:12px">{ui.validated_pill()}</div></div></div></div>', unsafe_allow_html=True)
+# subtle star field behind the home page only
+st.markdown("""<style>
+[data-testid="stAppViewContainer"] {
+  background:
+    radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,0.55), transparent 60%),
+    radial-gradient(1px 1px at 33% 72%, rgba(255,255,255,0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 58% 26%, rgba(255,255,255,0.60), transparent 60%),
+    radial-gradient(1px 1px at 76% 64%, rgba(255,255,255,0.40), transparent 60%),
+    radial-gradient(1px 1px at 88% 12%, rgba(255,255,255,0.50), transparent 60%),
+    radial-gradient(1px 1px at 47% 90%, rgba(255,255,255,0.35), transparent 60%),
+    radial-gradient(1.2px 1.2px at 6% 82%, rgba(255,255,255,0.45), transparent 60%),
+    radial-gradient(1px 1px at 68% 44%, rgba(255,255,255,0.30), transparent 60%),
+    radial-gradient(ellipse at 70% 0%, rgba(45,212,191,0.10), transparent 55%),
+    radial-gradient(ellipse at 0% 100%, rgba(76,141,255,0.10), transparent 50%),
+    #040B14;
+  background-size: 380px 380px, 520px 520px, 610px 610px, 450px 450px, 700px 700px, 330px 330px, 560px 560px,
+                   420px 420px, 100% 100%, 100% 100%, 100% 100%;
+}
+.lln-home-title {font-size:2.9rem; font-weight:800; line-height:1.1; color:#F2F8FA; margin:28px 0 10px 0;}
+.lln-home-sub {font-size:1.12rem; color:#C2D3DC; max-width:560px; margin-bottom:16px;}
+.lln-home-card {font-size:0.95rem; color:#B5C7D1; margin:6px 0 10px 0; min-height:44px;}
+.lln-home-card h3 {color:#F2F8FA; font-size:1.3rem; margin:8px 0 6px 0;}
+</style>""", unsafe_allow_html=True)
 
-# ------------------------------------------------------------------ two ways into the details
-e, m = st.columns(2, gap="medium")
-with e:
-    with st.container(key="card_explorer"):
-        st.markdown(f'<div class="lln-mode">{ui.mi("groups", 36, ui.TEAL)}<h3>Explorer Mode</h3>'
-                    '<p>Learn and explore the Moon with a guided, visual experience.</p></div>',
-                    unsafe_allow_html=True)
-        st.page_link("views/sky_view.py", label="Start exploring", icon=":material/arrow_forward:")
-with m:
-    with st.container(key="amber_missioncontrol"):
-        st.markdown(f'<div class="lln-mode">{ui.mi("tune", 36, ui.AMBER)}<h3>Mission Control Mode</h3>'
-                    '<p>Plan a mission, compare sites, and make a landing decision.</p></div>',
-                    unsafe_allow_html=True)
-        st.page_link("views/overview.py", label="Open Mission Control", icon=":material/arrow_forward:")
+left, right = st.columns([1, 1.25], gap="large", vertical_alignment="center")
+with left:
+    st.markdown(f'{ui.mi("rocket_launch", 44, ui.TEAL)}<div class="lln-home-title">Lunar Landing<br>Site Navigator</div>'
+                '<div class="lln-home-sub">Compare lunar south-pole landing sites and dates by when the Sun '
+                '(power) and Earth (communication) are above the real terrain horizon — computed from NASA data.'
+                f'</div>{ui.validated_pill()}', unsafe_allow_html=True)
+with right:
+    fig = ui.region_3d(list(names), height=470)
+    if fig is not None:
+        st.plotly_chart(fig, width="stretch", config={"displaylogo": False, "scrollZoom": False,
+                                                      "modeBarButtonsToRemove": ["toImage"]})
+        st.caption("The lunar south pole from NASA LOLA laser altimetry (heights ×4) with the candidate sites. "
+                   "Drag to rotate.")
 
-st.markdown('<div class="lln-sec" style="color:#7FF0DD;font-size:1.05rem">Explore the tool</div>',
-            unsafe_allow_html=True)
-for col, (page, label, icon) in zip(st.columns(3, gap="medium"), [
-        ("views/overview.py", "Mission Overview", ":material/bar_chart:"),
-        ("views/sky_view.py", "Sky View", ":material/landscape:"),
-        ("views/date_finder.py", "Date Finder", ":material/calendar_month:")]):
+st.write("")
+cards = [
+    ("card_go_dashboard", "space_dashboard", ui.TEAL, "Mission Dashboard",
+     "Pick sites and a landing time: 3D view, map, mission clock and the recommended site.",
+     "views/mission.py", "Open dashboard"),
+    ("amber_go_dates", "event_available", ui.AMBER, "Best Date Finder",
+     "Rank landing dates from 2026 to 2031 and open any of them in the dashboard.",
+     "views/date_finder.py", "Find the best dates"),
+    ("card_go_validation", "verified", ui.BOTH, "Data Validation",
+     "How the results were checked against JPL Horizons, and every NASA data source used.",
+     "views/validation.py", "See the evidence"),
+]
+for col, (key, icon, color, title, desc, page, cta) in zip(st.columns(3, gap="medium"), cards):
     with col:
-        with st.container(key=f"card_nav_{label.split()[0]}"):
-            st.page_link(page, label=label, icon=icon)
+        with st.container(key=key):
+            st.markdown(f'<div class="lln-home-card">{ui.mi(icon, 34, color)}<h3>{title}</h3>{desc}</div>',
+                        unsafe_allow_html=True)
+            st.page_link(page, label=cta, icon=":material/arrow_forward:")
 
-# ------------------------------------------------------------------ quick ranking (last layer)
-st.markdown('<div class="lln-sec" style="color:#7FF0DD;font-size:1.05rem">Quick site ranking</div>',
-            unsafe_allow_html=True)
-with st.container(key="card_quick"):
-    st.caption("Pick sites and a landing date for an overall ranking; open Mission Control for the details.")
-    c1, c2, c3 = st.columns([2.4, 1, 1])
-    chosen = c1.multiselect("Sites", list(names), format_func=names.get, key="m_sites")
-    c2.date_input("Landing date (UTC)", min_value=pd.Timestamp("2026-01-02").date(),
-                  max_value=pd.Timestamp("2031-02-10").date(), key="m_date")
-    dur = c3.slider("Surface stay (days)", 1.0, 14.0, step=0.5, key="m_dur")
-    if not chosen:
-        st.info("Pick at least one site.")
-    else:
-        start = ui.mission_start()
-        vis = {s: ui.site_vis_hourly(s) for s in chosen}
-        try:
-            table, best = finder.shift_compare(vis, start, duration_h=dur * 24, shifts_h=(0, 24, 48),
-                                               weights=ScoreWeights(), power=PowerParams(),
-                                               terrain_real={s: ui.terrain_status(s) == "real" for s in chosen})
-        except finder.DateRangeError:
-            st.warning("Choose an earlier date or a shorter stay.")
-            ui.footer()
-            st.stop()
-        base = table[table.shift_h == 0].set_index("site_id")
-        worst = base["worst_case_score"]
-        order = sorted(chosen, key=lambda s: (-round(worst[s]), -base.loc[s, "pct_both"], names[s].casefold()))
-        top = round(worst[order[0]])
-        winners = [s for s in order if round(worst[s]) == top]
-        left, right = st.columns([1.7, 1], gap="medium")
-        with left:
-            rows = []
-            for sid in order:
-                r = base.loc[sid]
-                lab, col = ui.rating(r.worst_case_score)
-                rank = 1 + sum(round(worst[x]) > round(worst[sid]) for x in order)
-                tied = sum(round(worst[x]) == round(worst[sid]) for x in order) > 1
-                rows.append(
-                    f'<tr class="{"top" if sid in winners else ""}"><td>{rank}{"=" if tied else ""}</td>'
-                    f'<td><b>{names[sid]}</b></td><td class="n">{r.pct_sunlit:.0f}%</td>'
-                    f'<td class="n">{r.pct_dte:.0f}%</td><td class="n"><span class="lln-bar" style="width:'
-                    f'{max(3, 0.6 * r.worst_case_score):.0f}px;background:{ui.TEAL}"></span>&nbsp;'
-                    f'<b>{r.worst_case_score:.0f}</b></td><td>{ui.chip(lab, col)}</td></tr>')
-            st.markdown(
-                '<table class="lln-table"><tr><th>#</th><th>Site</th>'
-                '<th class="n" title="Share of the stay with sunlight for power">Sunlight</th>'
-                '<th class="n" title="Share of the stay with Earth in view and a DSN complex seeing the Moon">'
-                'Earth contact</th><th class="n" title="Lowest score if landing slips 0, +24 or +48 h">'
-                'Score (worst case)</th><th>Rating</th></tr>' + "".join(rows) + "</table>", unsafe_allow_html=True)
-            best_txt = " & ".join(names[s] for s in winners)
-            st.markdown(
-                f'<div style="margin-top:10px;font-size:0.98rem">{ui.mi("flag", 20, ui.AMBER)} '
-                f'<b style="color:{ui.AMBER}">{"Tied best" if len(winners) > 1 else "Best"}: {best_txt}</b>'
-                f'<span style="color:#9FB4C0"> · {dur:g}-day stay from {start:%Y-%m-%d %H:%M} UTC. '
-                'Modeled comparison, not a landing-safety assessment.</span></div>', unsafe_allow_html=True)
-        with right:
-            st.plotly_chart(ui.south_pole_map(chosen, worst.to_dict(), height=330, highlight=winners[0]),
-                            width="stretch", config=ui.MAP_CONFIG)
-
-ui.footer()
+ui.footer(link=False)

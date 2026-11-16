@@ -16,9 +16,9 @@ import ui_common as ui
 
 ui.setup_page()
 if st.session_state.pop("_goto_overview", False):
-    st.switch_page("views/overview.py")
+    st.switch_page("views/mission.py")
 names = ui.names()
-ui.banner("calendar_month", "Date Finder",
+ui.banner("event_available", "Best Date Finder",
           "Find the surface-start dates that give the most sunlight and potential direct-to-Earth contact.")
 
 col_ctl, col_main = st.columns([0.85, 3.15])
@@ -136,13 +136,13 @@ with col_main:
             + "".join(rows) + "</table>",
             unsafe_allow_html=True)
         st.caption("All horizons from NASA LOLA terrain. Equal scores share a rank (1=) and are equally good under these criteria; they are listed by "
-                   "Both %, then earliest start. Score is for the planned start (hourly samples); Mission Overview re-checks it at 10 minutes and with +24/+48 h start shifts.")
+                   "Both %, then earliest start. Score is for the planned start (hourly samples); the Mission Dashboard re-checks it at 10 minutes and with +24/+48 h start shifts.")
         a, b = st.columns([3, 1.2], vertical_alignment="bottom")
-        pick = a.selectbox("Open a window in Mission Overview", list(shown.index),
+        pick = a.selectbox("Open a date in the Mission Dashboard", list(shown.index),
                            format_func=lambda i: f"#{shown.loc[i, 'rank']}  {names[shown.loc[i, 'site_id']]} · "
                                                  f"{pd.Timestamp(shown.loc[i, 'start_utc']):%Y-%m-%d %H:%M} UTC · "
                                                  f"score {shown.loc[i, 'rs']}")
-        b.button("Open in Mission Overview", icon=":material/arrow_forward:", type="primary", width="stretch",
+        b.button("Open in Mission Dashboard", icon=":material/arrow_forward:", type="primary", width="stretch",
                  on_click=open_in_overview,
                  args=(shown.loc[pick, "site_id"], shown.loc[pick, "start_utc"], dur_days))
     st.write("")

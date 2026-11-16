@@ -188,7 +188,7 @@ DEFAULT_SITE_IDS = ["malapert_massif", "de_gerlache_rim_2", "mons_mouton", "nobi
 
 
 def shared_defaults() -> dict:
-    """One set of mission selections shared by every page (Overview, Sky View, Date Finder)."""
+    """One set of mission selections shared by every page (Home, Mission Dashboard, Best Date Finder)."""
     ids = list(names())
     four = [s for s in DEFAULT_SITE_IDS if s in ids] or ids[:4]
     return {"m_sites": four, "m_date": pd.Timestamp("2027-08-16").date(), "m_hour": 12, "m_dur": 6.0,
@@ -477,7 +477,7 @@ def footer(link: bool = True):
                'Data: NASA/JPL SPICE · NASA LOLA terrain · USGS Artemis III regions. Team Bulldogs Beyond Earth · '
                'NASA Space Apps 2026.</div>', unsafe_allow_html=True)
     if link:
-        b.page_link("views/validation.py", label="Validation & Sources", icon=":material/fact_check:")
+        b.page_link("views/validation.py", label="Data Validation", icon=":material/verified:")
 
 
 # ------------------------------------------------------------------ 3D terrain (real LOLA tiles, data/terrain3d.npz)
@@ -559,7 +559,7 @@ def observer_3d(site_id: str, row, horizon_prof, exag: float = 2.0, height: int 
                                    hoverinfo="skip"))
         fig.add_trace(go.Scatter3d(
             x=[gx], y=[gy], z=[pz], mode="markers+text", name=nm,
-            text=[f"<b>{nm}</b> · El {e_:+.2f}° · Az {row[f'{k_}_az_deg']:.0f}°" + ("" if vis else " (behind terrain)")],
+            text=[f"<b>{nm}</b> {e_:+.2f}°" + ("" if vis else " (hidden)")],
             textposition=tpos, textfont=dict(color=c, size=14),
             marker=dict(size=13 if k_ == "sun" else 11, color=c if vis else "rgba(0,0,0,0)",
                         line=dict(color=c, width=3)), hoverinfo="skip"))

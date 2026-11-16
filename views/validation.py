@@ -14,7 +14,7 @@ from engine import live
 import ui_common as ui
 
 ui.setup_page()
-ui.banner("fact_check", "Validation & Sources",
+ui.banner("verified", "Data Validation",
           "What each check covers, what it does not, and where every input comes from.")
 names = ui.names()
 sites = ui.sites_df()
@@ -114,7 +114,7 @@ with st.expander("4 · Data sources and assumptions", icon=":material/database:"
 - **Eclipses**: Earth covering the Sun's disc reduces sunlight and power (circle-overlap model).
 - **Power**: Sun-tracking array, constant load, 95 % charge/discharge efficiency, 80 % depth of discharge — illustrative only.
 - **Score**: user-weighted preference (positive weights normalised), not a safety rating. Worst case = lowest score over the surface-start shifts.
-- Date Finder scans hourly data; Mission Overview recomputes at 10 minutes.
+- Best Date Finder scans hourly data; the Mission Dashboard recomputes at 10 minutes.
 """)
 
 with st.expander("5 · Limitations and AI disclosure", icon=":material/rule:"):

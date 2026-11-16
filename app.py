@@ -13,9 +13,8 @@ st.logo(str(ROOT / "assets" / "logo_full.png"), size="large", icon_image=str(ROO
 
 pg = st.navigation([
     st.Page("views/home.py", title="Home", icon=":material/home:", default=True),
-    st.Page("views/overview.py", title="Mission Overview", icon=":material/rocket_launch:"),
-    st.Page("views/sky_view.py", title="Sky View", icon=":material/satellite_alt:"),
-    st.Page("views/date_finder.py", title="Date Finder", icon=":material/calendar_month:"),
-    st.Page("views/validation.py", title="Validation & Sources", icon=":material/fact_check:"),
+    st.Page("views/mission.py", title="Mission Dashboard", icon=":material/space_dashboard:"),
+    st.Page("views/date_finder.py", title="Best Date Finder", icon=":material/event_available:"),
+    st.Page("views/validation.py", title="Data Validation", icon=":material/verified:"),
 ])
 pg.run()
