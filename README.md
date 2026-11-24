@@ -1,4 +1,7 @@
 # Lunar Landing Site Navigator — Bulldogs Beyond Earth (NASA Space Apps Challenge 2026)
+**▶ Live app (no install needed): https://bulldogs-lunar-navigator.streamlit.app**
+
+Demo slides: [demo/demo_slides.pdf](demo/demo_slides.pdf)
 
 Compare lunar south-pole candidate sites and dates by **terrain-aware Sun and Earth visibility**, an
 **illustrative power/storage estimate**, and **sensitivity to surface-start timing** (+24 / +48 h),
